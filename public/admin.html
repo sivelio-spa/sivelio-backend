@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sivelio Admin</title>
+
+<style>
+.app{
+display:flex;
+min-height:100vh;
+}
+
+.sidebar{
+width:220px;
+background:#0f172a;
+padding:20px;
+display:flex;
+flex-direction:column;
+gap:10px;
+border-right:1px solid #1f2937;
+}
+
+.sidebar h2{
+color:#facc15;
+margin-bottom:20px;
+}
+
+.sidebar button{
+background:#1f2937;
+color:white;
+border:none;
+padding:10px;
+border-radius:8px;
+text-align:left;
+cursor:pointer;
+transition:0.2s;
+}
+
+.sidebar button:hover{
+background:#facc15;
+color:black;
+}
+
+.main{
+flex:1;
+padding:20px;
+}
+#loginBox{
+text-align:center;
+margin-top:120px;
+}
+
+#loginBox input{
+padding:10px;
+border-radius:8px;
+border:none;
+margin:10px;
+}
+
+#loginBox button{
+padding:10px;
+background:gold;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+#err{
+color:red;
+margin-top:10px;
+}
+body{
+margin:0;
+font-family:Arial;
+background:radial-gradient(circle at top,#111827,#0b0f14);
+color:white;
+padding:20px;
+}
+
+h1{
+text-align:center;
+margin-bottom:20px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:15px;
+max-width:1000px;
+margin:auto;
+}
+
+.card{
+background:linear-gradient(145deg,#1f2937,#111827);
+padding:20px;
+border-radius:16px;
+text-align:center;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+transition:0.2s;
+}
+
+.card:hover{
+transform:translateY(-5px);
+}
+
+.big{
+font-size:26px;
+font-weight:bold;
+color:#facc15;
+margin-top:10px;
+}
+
+table{
+width:100%;
+margin-top:25px;
+border-collapse:collapse;
+max-width:900px;
+margin-left:auto;
+margin-right:auto;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #333;
+text-align:left;
+font-size:14px;
+}
+
+.status-paid{color:#7CFC98;}
+.status-pending{color:orange;}
+.status-cancelled{
+color:#ff4d4d;
+font-weight:bold;
+}
+.status-archived{
+color:#9ca3af;
+font-weight:bold;
+}
+button{
+padding:5px 8px;
+margin:2px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:bold;
+font-size:12px;
+}
+
+.del{background:red;color:white;}
+.pay{background:gold;}
+.pen{background:#555;color:white;}
+.arc{
+background:#374151;
+color:white;
+}
+.row{
+display:flex;
+justify-content:center;
+}
+table{
+background:#111827;
+border-radius:12px;
+overflow:hidden;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+}
+
+th{
+background:#1f2937;
+color:#facc15;
+text-transform:uppercase;
+font-size:12px;
+letter-spacing:1px;
+}
+
+td{
+background:#0f172a;
+}
+button{
+transition:0.2s;
+}
+
+button:hover{
+transform:scale(1.05);
+opacity:0.9;
+}
+</style>
+</head>
+
+<body>
+<div id="loginBox">
+  <h2>Admin Login</h2>
+
+  <input id="pass" type="password" placeholder="Password">
+
+  <button onclick="login()">Login</button>
+  <button onclick="googleLogin()">Continue with Google</button>
+  <div id="err"></div>
+</div>
+
+<div id="panel" style="display:none;">
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+
+<h2>⚡ Sivelio</h2>
+
+<button onclick="showSection('dashboard')">📊 Dashboard</button>
+<button onclick="showSection('bookings')">📅 Bookings</button>
+<button onclick="
+document.getElementById('filter').value='archived';
+showSection('bookings');
+load();
+">
+📦 Archived
+</button>
+<button disabled>⚙ Settings</button>
+
+</div>
+
+<!-- MAIN -->
+<div class="main">
+<h1 id="pageTitle">Dashboard</h1>
+
+<!-- DASHBOARD SECTION -->
+<div id="dashboardSection">
+
+<div class="grid">
+
+<div class="card">
+<div>Total Bookings</div>
+<div class="big" id="total">0</div>
+</div>
+
+<div class="card">
+<div>Total Revenue</div>
+<div class="big" id="revenue">0 TL</div>
+</div>
+
+<div class="card">
+<div>Today Bookings</div>
+<div class="big" id="today">0</div>
+</div>
+
+<div class="card">
+<div>Paid / Pending</div>
+<div class="big" id="status">0 / 0</div>
+</div>
+
+</div>
+
+</div>
+
+<!-- BOOKINGS SECTION -->
+<div id="bookingsSection" style="display:none;">
+
+<div style="max-width:900px;margin:20px auto;display:flex;gap:10px;flex-wrap:wrap;">
+
+<input id="search" placeholder="Search name..." style="padding:8px;border-radius:6px;border:none;">
+
+<select id="filter">
+<option value="all">All</option>
+<option value="paid">Paid</option>
+<option value="pending">Pending</option>
+<option value="today">Today</option>
+<option value="archived">Archived</option>
+</select>
+
+<button onclick="load()">Apply</button>
+
+<button onclick="document.getElementById('search').value=''; load()">
+Reset
+</button>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>Name</th>
+<th>Masseuse</th>
+<th>Date</th>
+<th>Time</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody id="list"></tbody>
+
+</table>
+
+
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+getAuth,
+signInWithEmailAndPassword,
+onAuthStateChanged,
+signOut,
+GoogleAuthProvider,
+signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
+getFirestore,
+collection,
+getDocs,
+doc,
+deleteDoc,
+updateDoc,
+onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+window.login = async function () {
+
+  const email = "kubilaycebeci37@gmail.com";
+  const password = document.getElementById("pass").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+
+    load();
+    showSection("dashboard");
+
+  } catch (e) {
+    document.getElementById("err").innerText = e.code;
+  }
+}
+
+
+
+
+const firebaseConfig = {
+apiKey: "AIzaSyB4kK31OQIpylEBznRMIAb5rEBYLP8xpvI",
+authDomain: "sivelio.firebaseapp.com",
+projectId: "sivelio",
+storageBucket: "sivelio.firebasestorage.app",
+messagingSenderId: "582866279141",
+appId: "1:582866279141:web:b5a44154ee6c220bfe120c"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+window.googleLogin = async function () {
+
+const provider = new GoogleAuthProvider();
+
+try {
+  const result = await signInWithPopup(auth, provider);
+
+  if (result.user.email !== "kubilaycebeci37@gmail.com") {
+    alert("Not allowed");
+    await signOut(auth);
+    return;
+  }
+
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("panel").style.display = "block";
+
+  load();
+  showSection("dashboard");
+
+} catch (e) {
+  document.getElementById("err").innerText = e.message;
+}
+
+};
+onAuthStateChanged(auth, (user) => {
+
+  if (user && user.email === "kubilaycebeci37@gmail.com") {
+
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+
+    load();
+    showSection("dashboard");
+
+  } else {
+
+    document.getElementById("loginBox").style.display = "block";
+    document.getElementById("panel").style.display = "none";
+
+    // ekstra güvenlik: çıkış yaptır
+    if (user) signOut(auth);
+
+  }
+
+});
+
+
+
+// REALTIME UPDATE
+onSnapshot(collection(db,"bookings"), () => {
+  load();
+});
+
+
+/* LOAD */
+async function cleanExpiredBookings(){
+
+const snap = await getDocs(collection(db,"bookings"));
+
+for(const d of snap.docs){
+
+const data = d.data();
+
+if(
+data.status === "pending" &&
+data.expiresAt &&
+data.expiresAt < Date.now()
+){
+await deleteDoc(doc(db,"bookings",d.id));
+}
+
+}
+
+}
+async function load(){
+if (!auth.currentUser || auth.currentUser.email !== "kubilaycebeci37@gmail.com") {
+  return;
+}
+await cleanExpiredBookings();
+
+const snap = await getDocs(collection(db,"bookings"));
+
+const search = (document.getElementById("search")?.value || "").toLowerCase();
+const filter = document.getElementById("filter").value;
+
+let total = 0;
+let revenue = 0;
+let todayCount = 0;
+let paid = 0;
+let pending = 0;
+
+const today = new Date().toISOString().split("T")[0];
+
+const list = document.getElementById("list");
+list.innerHTML = "";
+
+snap.forEach(d => {
+
+const data = d.data();
+const id = d.id;
+const status = String(data.status ?? "pending").toLowerCase().trim();
+
+// SEARCH
+if (
+  search &&
+  !(data.name || "").toLowerCase().includes(search)
+) return;
+
+// FILTER
+if (filter !== "all") {
+if (filter === "paid" && status !== "paid") return;
+if (filter === "pending" && status !== "pending") return;
+if (filter === "archived" && status !== "archived") return;
+if (filter === "today" && data.date !== today) return;
+}
+
+total++;
+
+if(status === "paid"){
+
+paid++;
+
+revenue += parseFloat(data.price || 0);
+
+}
+
+if(status === "pending"){
+
+pending++;
+
+}
+
+if(data.date === today){
+todayCount++;
+}
+
+list.innerHTML += `
+<tr>
+<td>${data.name}</td>
+<td>${data.masseuse}</td>
+<td>${data.date}</td>
+<td>${data.time}</td>
+<td class="status-${status}">${status}</td>
+<td>
+<button class="pay" onclick="markPaid('${id}')">Paid</button>
+<button class="pen" onclick="markPending('${id}')">Pending</button>
+<button class="del" onclick="removeItem('${id}')">X</button>
+<button class="arc" onclick="archive('${id}')">Archive</button>
+</td>
+</tr>
+`;
+
+});
+
+// dashboard update
+
+
+
+document.getElementById("total").innerText = total;
+document.getElementById("revenue").innerText = revenue + " PHP";
+document.getElementById("today").innerText = todayCount;
+document.getElementById("status").innerText = paid + " / " + pending;
+
+}
+window.showSection = function(section){
+
+document.getElementById("dashboardSection").style.display = "none";
+document.getElementById("bookingsSection").style.display = "none";
+
+if(section === "dashboard"){
+document.getElementById("dashboardSection").style.display = "block";
+}
+
+if(section === "bookings"){
+document.getElementById("bookingsSection").style.display = "block";
+}
+
+document.getElementById("pageTitle").innerText =
+section.charAt(0).toUpperCase() + section.slice(1);
+
+}
+/* ACTIONS */
+
+// ❌ Sil
+window.removeItem = async function(id){
+  await deleteDoc(doc(db,"bookings",id));
+  load();
+}
+
+// 💰 Paid yap
+window.markPaid = async function(id){
+  await updateDoc(doc(db,"bookings",id),{
+    status:"paid"
+  });
+  load();
+}
+
+// ⏳ Pending yap
+window.markPending = async function(id){
+  await updateDoc(doc(db,"bookings",id),{
+    status:"pending"
+  });
+  load();
+}
+
+// 📦 Archive yap
+window.archive = async function(id){
+  await updateDoc(doc(db,"bookings",id),{
+    status:"archived"
+  });
+  load();
+}
+
+
+
+
+  
+
+ 
+</script>

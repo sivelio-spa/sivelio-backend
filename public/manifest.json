@@ -1,0 +1,6 @@
+{
+  "name": "Sivelio Spa",
+  "short_name": "Sivelio",
+  "start_url": "index.html",
+  "display": "standalone"
+}
