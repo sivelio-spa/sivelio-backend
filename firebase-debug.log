@@ -1,0 +1,59 @@
+[debug] [2026-05-20T19:38:12.944Z] ----------------------------------------------------------------------
+[debug] [2026-05-20T19:38:12.947Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\as\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-05-20T19:38:12.948Z] CLI Version:   15.18.0
+[debug] [2026-05-20T19:38:12.948Z] Platform:      win32
+[debug] [2026-05-20T19:38:12.948Z] Node Version:  v24.15.0
+[debug] [2026-05-20T19:38:12.948Z] Time:          Wed May 20 2026 22:38:12 GMT+0300 (Türkiye Standart Saati)
+[debug] [2026-05-20T19:38:12.949Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-20T19:38:12.951Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-05-20T19:38:15.287Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-20T19:38:15.288Z] > authorizing via signed-in user (kubilaycebeci37@gmail.com)
+[debug] [2026-05-20T19:38:15.288Z] [iam] checking project sivelio for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-05-20T19:38:15.288Z] Checked if tokens are valid: false, expires at: 1779217554092
+[debug] [2026-05-20T19:38:15.288Z] Checked if tokens are valid: false, expires at: 1779217554092
+[debug] [2026-05-20T19:38:15.289Z] > refreshing access token with scopes: []
+[debug] [2026-05-20T19:38:15.290Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-05-20T19:38:15.290Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-20T19:38:15.445Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-05-20T19:38:15.445Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-20T19:38:15.458Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/sivelio:testIamPermissions [none]
+[debug] [2026-05-20T19:38:15.458Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/sivelio:testIamPermissions  x-goog-user-project=sivelio
+[debug] [2026-05-20T19:38:15.458Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/sivelio:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-20T19:38:15.655Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-05-20T19:38:15.655Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-05-20T19:38:16.381Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/sivelio:testIamPermissions 200
+[debug] [2026-05-20T19:38:16.381Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/sivelio:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-20T19:38:16.382Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:16.382Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:16.382Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/sivelio [none]
+[debug] [2026-05-20T19:38:17.293Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/sivelio 200
+[debug] [2026-05-20T19:38:17.293Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/sivelio {"projectId":"sivelio","projectNumber":"582866279141","displayName":"sivelio","name":"projects/sivelio","resources":{"hostingSite":"sivelio"},"state":"ACTIVE","etag":"1_a304748b-96ed-466a-b46f-57937cd09ec0"}
+[info] 
+[info] === Deploying to 'sivelio'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-05-20T19:38:17.306Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:17.307Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:17.307Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/sivelio/sites/sivelio [none]
+[debug] [2026-05-20T19:38:18.490Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/sivelio/sites/sivelio 200
+[debug] [2026-05-20T19:38:18.490Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/sivelio/sites/sivelio {"name":"projects/sivelio/sites/sivelio","defaultUrl":"https://sivelio.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-05-20T19:38:18.493Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:18.493Z] Checked if tokens are valid: true, expires at: 1779309494446
+[debug] [2026-05-20T19:38:18.494Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/sivelio/versions [none]
+[debug] [2026-05-20T19:38:18.494Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/sivelio/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-05-20T19:38:20.072Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/sivelio/versions 200
+[debug] [2026-05-20T19:38:20.073Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/sivelio/versions {"name":"projects/582866279141/sites/sivelio/versions/3eda2ded5bdf9bdc","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[sivelio]: beginning deploy... 
+[info] i  hosting[sivelio]: found 203479 files in . 
+[debug] [2026-05-20T19:38:39.222Z] [hosting] uploading with 200 concurrency
+[debug] [2026-05-20T19:38:39.223Z] [hosting] hash cache [] not populated
+[debug] [2026-05-20T19:38:39.274Z] Error: EBUSY: resource busy or locked, open 'C:\Users\as\ntuser.dat.LOG2'
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-05-20T19:38:39.275Z] Error: EBUSY: resource busy or locked, open 'C:\Users\as\ntuser.dat.LOG1'
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-05-20T19:38:39.276Z] Error: EBUSY: resource busy or locked, open 'C:\Users\as\NTUSER.DAT'
+[error] 
+[error] Error: An unexpected error has occurred.

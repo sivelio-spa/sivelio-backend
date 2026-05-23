@@ -1,20 +1,32 @@
 require("dotenv").config();
+
+
+console.log("STARTING SERVER...");
+console.log("STRIPE:", process.env.STRIPE_SECRET_KEY ? "OK" : "MISSING");
+console.log("FIREBASE KEY:", process.env.FIREBASE_PRIVATE_KEY ? "OK" : "MISSING");
+
 const express = require("express");
+
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
 
 admin.initializeApp({
-  credential: admin.credential.cert(require("./serviceAccountKey.json"))
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+  })
 });
 
 const app = express();
 app.use(cors({
-  origin: "*",
+  origin: true,
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(cors());
+app.options("*", cors());
+
 app.options("/create-checkout-session", cors());
 app.options("/webhook", cors());
 
@@ -104,6 +116,8 @@ cancel_url: "https://sivelio.com/?canceled=true",
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });
