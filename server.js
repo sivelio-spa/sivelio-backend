@@ -27,7 +27,8 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.options("*", cors());
+
+app.options(/.*/, cors());
 
 app.options("/create-checkout-session", cors());
 app.options("/webhook", cors());
