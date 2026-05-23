@@ -20,11 +20,13 @@ admin.initializeApp({
 });
 
 const app = express();
+
 app.use(cors({
   origin: true,
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 app.options("*", cors());
 
 app.options("/create-checkout-session", cors());
