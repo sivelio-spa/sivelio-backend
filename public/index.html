@@ -415,7 +415,7 @@ service,
 date,
 time,
 masseuse,
-price: services[service],
+price: services[service] * 100,
 status: "pending",
 createdAt: Date.now(),
 expiresAt: Date.now() + 15 * 60 * 1000
@@ -433,9 +433,9 @@ const res = await fetch("https://sivelio-backend-1.onrender.com/create-checkout-
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    price: services[service],
-    bookingId: docRef.id
-  })
+  price: services[service] * 100,
+  bookingId: docRef.id
+})
 });
 
 const data = await res.json();
