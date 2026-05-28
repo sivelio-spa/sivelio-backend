@@ -22,7 +22,11 @@ admin.initializeApp({
 const app = express();
 
 app.use(cors({
-  origin: ["https://sivelio.com", "https://www.sivelio.com"],
+  origin: [
+    "https://sivelio.com",
+    "https://www.sivelio.com",
+    "https://sivelio.web.app"
+  ],
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
