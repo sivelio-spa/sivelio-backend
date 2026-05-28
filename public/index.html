@@ -232,7 +232,7 @@ overflow-x:hidden;
 <div class="container">
 
 <input id="name" placeholder="Your Name">
-
+<input id="address" placeholder="Your Address">
 <select id="masseuse">
 <option value="Ayşe">Ayşe</option>
 <option value="Elif">Elif</option>
@@ -391,12 +391,13 @@ bookBtn.disabled = true;
 bookBtn.innerText = "Checking...";
 
 const name = document.getElementById("name").value;
+const address = document.getElementById("address").value;
 const service = document.getElementById("service").value;
 const date = document.getElementById("date").value;
 const time = document.getElementById("time").value;
 const masseuse = document.getElementById("masseuse").value;
 
-if (!name || !date || !time || time === "No slots") {
+if (!name || !address || !date || !time || time === "No slots") {
 setStatus("Fill all fields ❌");
 window.isBooking = false;
 bookBtn.disabled = false;
@@ -410,12 +411,13 @@ setStatus("Creating booking...");
 
 // 🔥 FIREBASE’E KAYIT
 const docRef = await addDoc(collection(db, "bookings"), {
-name,
-service,
-date,
-time,
-masseuse,
-price: services[service] * 100,
+  name,
+  address,
+  service,
+  date,
+  time,
+  masseuse,
+price: services[service],
 status: "pending",
 createdAt: Date.now(),
 expiresAt: Date.now() + 15 * 60 * 1000
@@ -433,7 +435,7 @@ const res = await fetch("https://sivelio-backend-1.onrender.com/create-checkout-
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-  price: services[service] * 100,
+  price: services[service],
   bookingId: docRef.id
 })
 });

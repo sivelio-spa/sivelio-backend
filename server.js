@@ -22,11 +22,7 @@ admin.initializeApp({
 const app = express();
 
 app.use(cors({
-  origin: [
-    "https://sivelio.com",
-    "https://www.sivelio.com",
-    "https://sivelio.web.app"
-  ],
+  origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -34,8 +30,7 @@ app.use(cors({
 
 
 
-app.options("/create-checkout-session", cors());
-app.options("/webhook", cors());
+
 
 
 
@@ -107,7 +102,7 @@ product_data: {
   name: "Sivelio Spa Massage Service",
   description: "Massage and wellness appointment booking"
 },
-          unit_amount: price * 100,
+          unit_amount: Math.round(price * 100),
         },
         quantity: 1,
       }],
