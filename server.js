@@ -22,13 +22,13 @@ admin.initializeApp({
 const app = express();
 
 app.use(cors({
-  origin: "https://sivelio.com",
+  origin: ["https://sivelio.com", "https://www.sivelio.com"],
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+app.options("*", cors());
 
 
-app.options(/.*/, cors());
 
 app.options("/create-checkout-session", cors());
 app.options("/webhook", cors());
