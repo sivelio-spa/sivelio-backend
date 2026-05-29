@@ -221,6 +221,14 @@ load();
 
 <!-- MAIN -->
 <div class="main">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+  <div id="userInfo"></div>
+
+  <button onclick="logout()"
+    style="background:red;color:white;border:none;padding:8px 12px;border-radius:6px;">
+    Logout
+  </button>
+</div>
 <h1 id="pageTitle">Dashboard</h1>
 
 <!-- DASHBOARD SECTION -->
@@ -235,7 +243,7 @@ load();
 
 <div class="card">
 <div>Total Revenue</div>
-<div class="big" id="revenue">0 TL</div>
+<div class="big" id="revenue">0 PHP</div>
 </div>
 
 <div class="card">
@@ -350,6 +358,10 @@ appId: "1:582866279141:web:b5a44154ee6c220bfe120c"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+window.logout = async function () {
+  await signOut(auth);
+  location.reload();
+};
 window.googleLogin = async function () {
 
 const provider = new GoogleAuthProvider();
@@ -376,8 +388,11 @@ try {
 };
 onAuthStateChanged(auth, (user) => {
 
-  if (user && user.email === "kubilaycebeci37@gmail.com") {
+  const ADMIN_EMAIL = "kubilaycebeci37@gmail.com";
 
+if (user && user.email === ADMIN_EMAIL) {
+document.getElementById("userInfo").innerText =
+  "Logged in: " + user.email;
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("panel").style.display = "block";
 
@@ -399,8 +414,13 @@ onAuthStateChanged(auth, (user) => {
 
 
 // REALTIME UPDATE
+let firstLoad = true;
+
 onSnapshot(collection(db,"bookings"), () => {
-  load();
+  if (!firstLoad) {
+    load();
+  }
+  firstLoad = false;
 });
 
 
@@ -428,7 +448,7 @@ async function load(){
 if (!auth.currentUser || auth.currentUser.email !== "kubilaycebeci37@gmail.com") {
   return;
 }
-await cleanExpiredBookings();
+// await cleanExpiredBookings();
 
 const snap = await getDocs(collection(db,"bookings"));
 
@@ -472,7 +492,7 @@ if(status === "paid"){
 
 paid++;
 
-revenue += parseFloat(data.price || 0);
+revenue += (parseFloat(data.price || 0) / 100);
 
 }
 

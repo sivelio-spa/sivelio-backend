@@ -417,7 +417,7 @@ const docRef = await addDoc(collection(db, "bookings"), {
   date,
   time,
   masseuse,
-price: services[service],
+price: services[service] * 100,
 status: "pending",
 createdAt: Date.now(),
 expiresAt: Date.now() + 15 * 60 * 1000
@@ -435,12 +435,20 @@ const res = await fetch("https://sivelio-backend-1.onrender.com/create-checkout-
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-  price: services[service],
+  price: services[service] * 100,
   bookingId: docRef.id
 })
 });
 
 const data = await res.json();
+
+console.log("STRIPE RESPONSE:", data);
+
+if (!data.url) {
+  setStatus("Stripe error ❌");
+  console.log("ERROR:", data);
+  return;
+}
 
 window.location.href = data.url;
 
@@ -479,14 +487,7 @@ const data = d.data();
 // boş veri kontrolü
 if (!data || !data.date || !data.time) return;
 
-// süresi dolmuş pending sil
-if (
-data.status === "pending" &&
-data.expiresAt < Date.now()
-) {
-deleteDoc(doc(db, "bookings", d.id));
-return;
-}
+
 
 // dolu slot kontrolü
 if (

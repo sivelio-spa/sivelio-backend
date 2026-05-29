@@ -78,6 +78,7 @@ app.get("/", (req, res) => {
 
 // Ödeme oluşturma
 app.post("/create-checkout-session", async (req, res) => {
+  console.log("CREATE SESSION BODY:", req.body);
   try {
     const price = Number(req.body.price);
 
@@ -102,7 +103,7 @@ product_data: {
   name: "Sivelio Spa Massage Service",
   description: "Massage and wellness appointment booking"
 },
-          unit_amount: price,
+          unit_amount: price * 100,
         },
         quantity: 1,
       }],
