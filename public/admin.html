@@ -444,7 +444,7 @@ await deleteDoc(doc(db,"bookings",d.id));
 }
 
 }
-async function load(){
+window.load = async function(){
 if (!auth.currentUser || auth.currentUser.email !== "kubilaycebeci37@gmail.com") {
   return;
 }
@@ -529,7 +529,8 @@ list.innerHTML += `
 
 
 document.getElementById("total").innerText = total;
-document.getElementById("revenue").innerText = revenue + " PHP";
+document.getElementById("revenue").innerText =
+  "₱ " + revenue.toFixed(2);
 document.getElementById("today").innerText = todayCount;
 document.getElementById("status").innerText = paid + " / " + pending;
 
