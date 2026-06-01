@@ -1,583 +1,600 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sivelio</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-body{
-margin:0;
-font-family:'Poppins',sans-serif;
-background:linear-gradient(180deg,#0b0f14,#111827);
-color:white;
-display:flex;
-flex-direction:column;
-align-items:center;
-min-height:100vh;
-}
-
-
-
-.container{
-margin-top:40px;
-background:rgba(17,24,39,0.92);
-padding:28px;
-border-radius:28px;
-width:380px;
-backdrop-filter:blur(14px);
-border:1px solid rgba(255,255,255,0.06);
-box-shadow:
-0 20px 60px rgba(0,0,0,0.55),
-0 0 60px rgba(250,204,21,0.10);
-display:flex;
-flex-direction:column;
-gap:14px;
-}
-
-input,select{
-padding:15px;
-border-radius:16px;
-border:1px solid rgba(255,255,255,0.08);
-background:#0b1220;
-color:white;
-outline:none;
-font-size:14px;
-transition:0.25s;
-box-shadow:inset 0 1px 2px rgba(255,255,255,0.03);
-}
-input:focus,
-select:focus{
-border-color:#facc15;
-box-shadow:0 0 0 4px rgba(250,204,21,0.15);
-}
-button{
-padding:16px;
-border:none;
-border-radius:16px;
-background:linear-gradient(135deg,#facc15,#eab308);
-font-weight:bold;
-cursor:pointer;
-font-size:16px;
-transition:0.25s;
-box-shadow:
-0 12px 30px rgba(250,204,21,0.28);
-color:#111827;
-letter-spacing:0.5px;
-}
-
-button:hover{
-transform:translateY(-3px) scale(1.02);
-opacity:1;
-box-shadow:
-0 18px 40px rgba(250,204,21,0.38);
-}
-
-#status{
-font-size:14px;
-color:#7CFC98;
-min-height:18px;
-}
-
-#priceBox{
-background:#111827;
-padding:14px;
-border-radius:14px;
-font-size:15px;
-font-weight:bold;
-border:1px solid rgba(250,204,21,0.15);
-color:#facc15;
-text-align:center;
-box-shadow:0 6px 20px rgba(0,0,0,0.25);
-}
-.hero{
-position:relative;
-width:100%;
-height:520px;
-overflow:hidden;
-display:flex;
-align-items:center;
-justify-content:center;
-}
-
-.heroImage{
-width:100%;
-height:100%;
-object-fit:cover;
-position:absolute;
-top:0;
-left:0;
-}
-
-.overlay{
-position:absolute;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.45);
-z-index:1;
-}
-
-.heroContent{
-position:relative;
-z-index:2;
-text-align:center;
-}
-
-.heroContent h1{
-font-size:58px;
-margin:0;
-letter-spacing:4px;
-color:white;
-text-shadow:0 10px 30px rgba(0,0,0,0.5);
-}
-
-.heroContent p{
-font-size:20px;
-margin-top:10px;
-color:#facc15;
-}
-
-.gallery {
-display: grid;
-grid-template-columns: repeat(4, 1fr);
-gap: 25px;
-max-width: 1400px;
-margin: auto;
-padding: 40px;
-}
-
-
-.galleryItem{
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sivelio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(180deg,#0b0f14,#111827);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
   position:relative;
-  overflow:hidden;
-  border-radius:20px;
-  height:260px;
-}
 
-.galleryItem img{
+  }
+
+
+
+  .container{
+  margin-top:40px;
+  background:rgba(17,24,39,0.92);
+  padding:28px;
+  border-radius:28px;
+  width:380px;
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.06);
+  box-shadow:
+  0 20px 60px rgba(0,0,0,0.55),
+  0 0 60px rgba(250,204,21,0.10);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  }
+
+  input,select{
+  padding:15px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:#0b1220;
+  color:white;
+  outline:none;
+  font-size:14px;
+  transition:0.25s;
+  box-shadow:inset 0 1px 2px rgba(255,255,255,0.03);
+  }
+  input:focus,
+  select:focus{
+  border-color:#facc15;
+  box-shadow:0 0 0 4px rgba(250,204,21,0.15);
+  }
+  button{
+  padding:16px;
+  border:none;
+  border-radius:16px;
+  background:linear-gradient(135deg,#facc15,#eab308);
+  font-weight:bold;
+  cursor:pointer;
+  font-size:16px;
+  transition:0.25s;
+  box-shadow:
+  0 12px 30px rgba(250,204,21,0.28);
+  color:#111827;
+  letter-spacing:0.5px;
+  }
+
+  button:hover{
+  transform:translateY(-3px) scale(1.02);
+  opacity:1;
+  box-shadow:
+  0 18px 40px rgba(250,204,21,0.38);
+  }
+
+  #status{
+  font-size:14px;
+  color:#7CFC98;
+  min-height:18px;
+  }
+
+  #priceBox{
+  background:#111827;
+  padding:14px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:bold;
+  border:1px solid rgba(250,204,21,0.15);
+  color:#facc15;
+  text-align:center;
+  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  }
+  .hero{
+  position:relative;
+  width:100%;
+  height:520px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  }
+
+  .heroImage{
   width:100%;
   height:100%;
   object-fit:cover;
-  transition:0.5s;
+  position:absolute;
+  top:0;
+  left:0;
+  }
+
+  .overlay{
+  position:absolute;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.45);
+  z-index:1;
+  }
+
+  .heroContent{
+  position:relative;
+  z-index:2;
+  text-align:center;
+  }
+
+  .heroContent h1{
+  font-size:58px;
+  margin:0;
+  letter-spacing:4px;
+  color:white;
+  text-shadow:0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  .heroContent p{
+  font-size:20px;
+  margin-top:10px;
+  color:#facc15;
+  }
+  .logo{
+  position:fixed;
+  top:15px;
+  left:15px;
+  width:45px;
+  height:45px;
+  z-index:99999;
 }
+  .heroContent{
+    position:relative;
+    z-index:2;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+  }
+  .gallery {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+  max-width: 1400px;
+  margin: auto;
+  padding: 40px;
+  }
 
-.galleryItem:hover img{
-  transform:scale(1.08);
-  filter:brightness(1.1);
-}
-@media(max-width:768px){
 
-.hero{
-height:380px;
-}
+  .galleryItem{
+    position:relative;
+    overflow:hidden;
+    border-radius:20px;
+    height:260px;
+  }
 
-.heroContent h1{
-font-size:34px;
-letter-spacing:2px;
-padding:0 10px;
-}
+  .galleryItem img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transition:0.5s;
+  }
 
-.heroContent p{
-font-size:15px;
-padding:0 20px;
-}
+  .galleryItem:hover img{
+    transform:scale(1.08);
+    filter:brightness(1.1);
+  }
+  @media(max-width:768px){
 
-.container{
-width:90%;
-padding:20px;
-margin-top:20px;
-}
+  .hero{
+  height:380px;
+  }
 
-.gallery{
-grid-template-columns:1fr;
-padding:20px;
-gap:18px;
-}
+  .heroContent h1{
+  font-size:34px;
+  letter-spacing:2px;
+  padding:0 10px;
+  }
 
-.galleryItem{
-height:220px;
-}
+  .heroContent p{
+  font-size:15px;
+  padding:0 20px;
+  }
 
-input,
-select,
-button{
-font-size:16px;
-padding:16px;
-}
+  .container{
+  width:90%;
+  padding:20px;
+  margin-top:20px;
+  }
 
-body{
-overflow-x:hidden;
-}
+  .gallery{
+  grid-template-columns:1fr;
+  padding:20px;
+  gap:18px;
+  }
 
-}
-</style>
+  .galleryItem{
+  height:220px;
+  }
 
-</head>
+  input,
+  select,
+  button{
+  font-size:16px;
+  padding:16px;
+  }
 
-<body>
+  body{
+  overflow-x:hidden;
+  }
+
+  }
+  </style>
+
+  </head>
+
+  <body>
+
+<img src="images/logo.png" class="logo">
 
 <div class="hero">
   <div class="overlay"></div>
 
   <img src="images/1.jpeg" class="heroImage" id="heroImg">
 
-
   <div class="heroContent">
     <h1>Sivelio</h1>
     <p>Professional Wellness & Massage Appointment Service in Manila</p>
   </div>
 </div>
-<div class="container">
+  <div class="container">
 
-<input id="name" placeholder="Your Name">
-<input id="address" placeholder="Your Address">
-<select id="masseuse">
-<option value="Ayşe">Ayşe</option>
-<option value="Elif">Elif</option>
-<option value="Zeynep">Zeynep</option>
+  <input id="name" placeholder="Your Name">
+  <input id="address" placeholder="Your Address">
+  <select id="masseuse">
+  <option value="Masseuse1">Masseuse 1</option>
+  <option value="Masseuse2">Masseuse 2</option>
 </select>
 
-<select id="service">
-<option value="Relaxation">Relaxation</option>
-<option value="Deep Tissue">Deep Tissue</option>
-<option value="Aromatherapy">Aromatherapy</option>
-</select>
+  <select id="service">
+  <option value="Relaxation">Relaxation</option>
+  <option value="Deep Tissue">Deep Tissue</option>
+  <option value="Aromatherapy">Aromatherapy</option>
+  </select>
 
-<div id="priceBox">Price: -</div>
+  <div id="priceBox">Price: -</div>
 
-<input type="date" id="date" min="">
+  <input type="date" id="date" min="">
 
-<select id="time">
-<option>Select date first</option>
-</select>
+  <select id="time">
+  <option>Select date first</option>
+  </select>
 
-  <button id="bookBtn" onclick="book()">
-Secure Booking
-</button>
-<p style="font-size:12px;opacity:0.7;margin-top:10px;">
-By booking, you agree to our Terms of Service and Privacy Policy.
-Appointments are confirmed only after successful payment.
-</p>
-
-
-<!-- GOOGLE MAPS BURAYA GELECEK -->
-<div style="margin-top:20px;width:100%;">
-  <iframe
-  src="https://maps.google.com/maps?q=Manila&output=embed"
-  width="100%"
-  height="300"
-  style="border:0;border-radius:16px;margin-top:15px;"
-  loading="lazy">
-</iframe>
-</div>
-
-</div>
-<div id="status"></div>
-
-</div>
-<div class="gallery">
-  <div class="galleryItem"><img src="images/2.jpeg"></div>
-  <div class="galleryItem"><img src="images/3.jpeg"></div>
-  <div class="galleryItem"><img src="images/4.jpeg"></div>
-  <div class="galleryItem"><img src="images/5.jpeg"></div>
-</div>
-<!-- WHATSAPP BUTTON -->
-<a href="https://wa.me/61404017644" 
-   target="_blank"
-   style="
-   position:fixed;
-   bottom:20px;
-   right:20px;
-   background:#25D366;
-   color:white;
-   padding:14px 16px;
-   border-radius:50px;
-   text-decoration:none;
-   font-weight:bold;
-   box-shadow:0 10px 25px rgba(0,0,0,0.3);
-   z-index:999;">
-   WhatsApp
-</a>
-<div style="margin:40px 0;text-align:center;color:#ccc;line-height:1.8;">
-
-<h3 style="color:#facc15;">Contact</h3>
-
-<p>Email: support@sivelio.com</p>
-<p>Support: sivelio75@gmail.com (Response within 24 hours)</p>
-<p>Phone: +61 404 017 644</p>
-<p>Refunds are available for cancellations made before appointment time. Late cancellations may not be eligible for refund.</p>
-
-<p style="margin-top:20px;font-size:12px;">
-Sivelio Spa is a legitimate appointment-based wellness service.
-</p>
-<p>Available in Manila and nearby areas.</p>
-<p>Secure online payments powered by Stripe.</p>
-<a href="privacy.html" style="color:gold;margin-right:15px;">
-Privacy Policy
-</a>
-
-<a href="terms.html" style="color:gold;">
-Terms of Service
-</a>
-<p style="margin-top:20px;font-size:12px;opacity:0.8;">
-All bookings are subject to availability.
-</p>
-
-<p style="font-size:12px;opacity:0.7;">
-© 2026 Sivelio Spa. All rights reserved.
-</p>
-</div>
-
-<script type="module">
+    <button id="bookBtn" onclick="book()">
+  Secure Booking
+  </button>
+  <p style="font-size:12px;opacity:0.7;margin-top:10px;">
+  By booking, you agree to our Terms of Service and Privacy Policy.
+  Appointments are confirmed only after successful payment.
+  </p>
 
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-getFirestore,
-collection,
-getDocs,
-updateDoc,
-doc,
-runTransaction,
-deleteDoc,
-addDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"; 
+  <!-- GOOGLE MAPS BURAYA GELECEK -->
+  <div style="margin-top:20px;width:100%;">
+    <iframe
+    src="https://maps.google.com/maps?q=Manila&output=embed"
+    width="100%"
+    height="300"
+    style="border:0;border-radius:16px;margin-top:15px;"
+    loading="lazy">
+  </iframe>
+  </div>
+
+  </div>
+  <div id="status"></div>
+
+  <div class="gallery">
+    <div class="galleryItem"><img src="images/2.jpeg"></div>
+    <div class="galleryItem"><img src="images/3.jpeg"></div>
+    <div class="galleryItem"><img src="images/4.jpeg"></div>
+    <div class="galleryItem"><img src="images/5.jpeg"></div>
+  </div>
+  <!-- WHATSAPP BUTTON -->
+  <a href="https://wa.me/61404017644" 
+    target="_blank"
+    style="
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    background:#25D366;
+    color:white;
+    padding:14px 16px;
+    border-radius:50px;
+    text-decoration:none;
+    font-weight:bold;
+    box-shadow:0 10px 25px rgba(0,0,0,0.3);
+    z-index:999;">
+    WhatsApp
+  </a>
+  <div style="margin:40px 0;text-align:center;color:#ccc;line-height:1.8;">
+
+  <h3 style="color:#facc15;">Contact</h3>
+
+  <p>Email: support@sivelio.com</p>
+  <p>Support: sivelio75@gmail.com (Response within 24 hours)</p>
+  <p>Phone: +61 404 017 644</p>
+  <p>Refunds are available for cancellations made before appointment time. Late cancellations may not be eligible for refund.</p>
+
+  <p style="margin-top:20px;font-size:12px;">
+  Sivelio Spa is a legitimate appointment-based wellness service.
+  </p>
+  <p>Available in Manila and nearby areas.</p>
+  <p>Secure online payments powered by Stripe.</p>
+  <a href="privacy.html" style="color:gold;margin-right:15px;">
+  Privacy Policy
+  </a>
+
+  <a href="terms.html" style="color:gold;">
+  Terms of Service
+  </a>
+  <p style="margin-top:20px;font-size:12px;opacity:0.8;">
+  All bookings are subject to availability.
+  </p>
+
+  <p style="font-size:12px;opacity:0.7;">
+  © 2026 Sivelio Spa. All rights reserved.
+  </p>
+  </div>
+
+  <script type="module">
 
 
-const firebaseConfig = {
-apiKey: "AIzaSyB4kK31OQIpylEBznRMIAb5rEBYLP8xpvI",
-authDomain: "sivelio.firebaseapp.com",
-projectId: "sivelio",
-storageBucket: "sivelio.firebasestorage.app",
-messagingSenderId: "582866279141",
-appId: "1:582866279141:web:b5a44154ee6c220bfe120c"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-window.db = db;
-window.isBooking = false;
-/* SERVICES */
-const services = {
-"Relaxation": 1400,
-"Deep Tissue": 1600,
-"Aromatherapy": 1500
-};
-
-const currency = "PHP";
-
-const statusEl = document.getElementById("status");
-
-/* PRICE */
-window.showPrice = function(){
-const s = document.getElementById("service").value;
-document.getElementById("priceBox").innerText =
-
-"Price: " + services[s] + " " + currency;
-};
-
-document.getElementById("service").addEventListener("change", showPrice);
-showPrice();
-
-/* DATE CHANGE */
-document.getElementById("date").addEventListener("change", async () => {
-  if (window.updateTimes) await window.updateTimes();
-});
-document.getElementById("masseuse").addEventListener("change", async () => {
-  if (window.updateTimes) await window.updateTimes();
-});
-/* STATUS */
-function setStatus(msg){
-statusEl.innerText = msg;
-}
-
-/* BOOK */
-window.book = async function () {
-
-const bookBtn = document.getElementById("bookBtn");
-
-if (window.isBooking) return;
-window.isBooking = true;
-
-bookBtn.disabled = true;
-bookBtn.innerText = "Checking...";
-
-const name = document.getElementById("name").value;
-const address = document.getElementById("address").value;
-const service = document.getElementById("service").value;
-const date = document.getElementById("date").value;
-const time = document.getElementById("time").value;
-const masseuse = document.getElementById("masseuse").value;
-
-if (!name || !address || !date || !time || time === "No slots") {
-setStatus("Fill all fields ❌");
-window.isBooking = false;
-bookBtn.disabled = false;
-bookBtn.innerText = "Book";
-return;
-}
-
-try {
-
-setStatus("Creating booking...");
-
-// 🔥 FIREBASE’E KAYIT
-const docRef = await addDoc(collection(db, "bookings"), {
-  name,
-  address,
-  service,
-  date,
-  time,
-  masseuse,
-price: services[service] * 100,
-status: "pending",
-createdAt: Date.now(),
-expiresAt: Date.now() + 15 * 60 * 1000
-});
-
-// booking id sakla
-localStorage.setItem("bookingId", docRef.id);
-
-setStatus("Redirecting to payment...");
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+  getFirestore,
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  runTransaction,
+  deleteDoc,
+  addDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"; 
 
 
-const res = await fetch("https://sivelio-backend-1.onrender.com/create-checkout-session", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-  price: services[service] * 100,
-  bookingId: docRef.id
-})
-});
+  const firebaseConfig = {
+  apiKey: "AIzaSyB4kK31OQIpylEBznRMIAb5rEBYLP8xpvI",
+  authDomain: "sivelio.firebaseapp.com",
+  projectId: "sivelio",
+  storageBucket: "sivelio.firebasestorage.app",
+  messagingSenderId: "582866279141",
+  appId: "1:582866279141:web:b5a44154ee6c220bfe120c"
+  };
 
-const data = await res.json();
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window.db = db;
+  window.isBooking = false;
+  /* SERVICES */
+  const services = {
+  "Relaxation": 1400,
+  "Deep Tissue": 1600,
+  "Aromatherapy": 1500
+  };
 
-console.log("STRIPE RESPONSE:", data);
+  const currency = "PHP";
 
-if (!data.url) {
-  setStatus("Stripe error ❌");
-  console.log("ERROR:", data);
+  const statusEl = document.getElementById("status");
+
+  /* PRICE */
+  window.showPrice = function(){
+  const s = document.getElementById("service").value;
+  document.getElementById("priceBox").innerText =
+
+  "Price: " + services[s] + " " + currency;
+  };
+
+  document.getElementById("service").addEventListener("change", showPrice);
+  showPrice();
+
+  /* DATE CHANGE */
+  document.getElementById("date").addEventListener("change", async () => {
+    if (window.updateTimes) await window.updateTimes();
+  });
+  document.getElementById("masseuse").addEventListener("change", async () => {
+    if (window.updateTimes) await window.updateTimes();
+  });
+  /* STATUS */
+  function setStatus(msg){
+  statusEl.innerText = msg;
+  }
+
+  /* BOOK */
+  window.book = async function () {
+
+  const bookBtn = document.getElementById("bookBtn");
+
+  if (window.isBooking) return;
+  window.isBooking = true;
+
+  bookBtn.disabled = true;
+  bookBtn.innerText = "Checking...";
+
+  const name = document.getElementById("name").value;
+  const address = document.getElementById("address").value;
+  const service = document.getElementById("service").value;
+  const date = document.getElementById("date").value;
+  const time = document.getElementById("time").value;
+  const masseuse = document.getElementById("masseuse").value;
+
+  if (!name || !address || !date || !time || time === "No slots") {
+  setStatus("Fill all fields ❌");
+  window.isBooking = false;
+  bookBtn.disabled = false;
+  bookBtn.innerText = "Book";
   return;
-}
-
-window.location.href = data.url;
-
-
-} catch (e) {
-console.error(e);
-setStatus("Error ❌");
-}
-
-window.isBooking = false;
-bookBtn.disabled = false;
-bookBtn.innerText = "Book";
-};
-
-
-/* TIMES */
-window.updateTimes = async function () {
-
-const date = document.getElementById("date").value;
-const masseuse = document.getElementById("masseuse").value;
-
-if (!date) {
-document.getElementById("time").innerHTML =
-`<option>Select date first</option>`;
-return;
-}
-
-// ✅ FIREBASE'DEN VERİ ÇEKİLİYOR
-const snap = await getDocs(collection(db, "bookings"));
-
-let taken = [];
-
-snap.forEach((d) => {
-const data = d.data();
-
-// boş veri kontrolü
-if (!data || !data.date || !data.time) return;
-
-
-
-// dolu slot kontrolü
-if (
-data.date === date &&
-data.masseuse === masseuse &&
-(
-data.status === "paid" ||
-(data.status === "pending" && data.expiresAt > Date.now())
-)
-) {
-taken.push(data.time);
-}
-});
-
-const all = Array.from({length: 24}, (_, i) =>
-  i.toString().padStart(2, "0") + ":00"
-);
-const now = new Date();
-
-const currentHour = now.getHours();
-const selectedDate = new Date(date);
-const today = new Date();
-
-const isToday = selectedDate.toDateString() === today.toDateString();
-
-let html = "";
-
-all.forEach(t => {
-
-const slotHour = parseInt(t.split(":")[0]);
-
-if (isToday && slotHour <= currentHour) return;
-
-if (!taken.includes(t)) {
-html += `<option value="${t}">${t}</option>`;
-}
-
-});
-
-document.getElementById("time").innerHTML =
-html || `<option>No slots</option>`;
-
-};
-
-/* AUTO LOAD */
-window.addEventListener("load", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  if (urlParams.get("success") === "true") {
-    setStatus("Payment successful ✅");
   }
 
-  if (urlParams.get("canceled") === "true") {
-    setStatus("Payment canceled ❌");
+  try {
+
+  setStatus("Creating booking...");
+
+  // 🔥 FIREBASE’E KAYIT
+  const docRef = await addDoc(collection(db, "bookings"), {
+    name,
+    address,
+    service,
+    date,
+    time,
+    masseuse,
+  price: services[service] * 100,
+  status: "pending",
+  createdAt: Date.now(),
+  expiresAt: Date.now() + 15 * 60 * 1000
+  });
+
+  // booking id sakla
+  localStorage.setItem("bookingId", docRef.id);
+
+  setStatus("Redirecting to payment...");
+
+
+  const res = await fetch("https://sivelio-backend-1.onrender.com/create-checkout-session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+    price: services[service] * 100,
+    bookingId: docRef.id
+  })
+  });
+
+  const data = await res.json();
+
+  console.log("STRIPE RESPONSE:", data);
+
+  if (!data.url) {
+    setStatus("Stripe error ❌");
+    console.log("ERROR:", data);
+    return;
   }
-});
-document.getElementById("date").min =
-new Date().toISOString().split("T")[0];
-const heroImages = [
-  "images/1.jpeg",
-  "images/2.jpeg",
-  "images/3.jpeg",
-  "images/4.jpeg",
-  "images/5.jpeg"
-];
 
-let i = 0;
-
-setInterval(() => {
-  i = (i + 1) % heroImages.length;
-  document.getElementById("heroImg").src = heroImages[i];
-}, 4000);
+  window.location.href = data.url;
 
 
-  
-</script>
+  } catch (e) {
+  console.error(e);
+  setStatus("Error ❌");
+  }
 
-</body>
-</html>
+  window.isBooking = false;
+  bookBtn.disabled = false;
+  bookBtn.innerText = "Book";
+  };
+
+
+  /* TIMES */
+  window.updateTimes = async function () {
+
+  const date = document.getElementById("date").value;
+  const masseuse = document.getElementById("masseuse").value;
+
+  if (!date) {
+  document.getElementById("time").innerHTML =
+  `<option>Select date first</option>`;
+  return;
+  }
+
+  // ✅ FIREBASE'DEN VERİ ÇEKİLİYOR
+  const snap = await getDocs(collection(db, "bookings"));
+
+  let taken = [];
+
+  snap.forEach((d) => {
+  const data = d.data();
+
+  // boş veri kontrolü
+  if (!data || !data.date || !data.time) return;
+
+
+
+  // dolu slot kontrolü
+  if (
+  data.date === date &&
+  data.masseuse === masseuse &&
+  (
+  data.status === "paid" ||
+  (data.status === "pending" && data.expiresAt > Date.now())
+  )
+  ) {
+  taken.push(data.time);
+  }
+  });
+
+  const all = Array.from({length: 24}, (_, i) =>
+    i.toString().padStart(2, "0") + ":00"
+  );
+  const now = new Date();
+
+  const currentHour = now.getHours();
+  const selectedDate = new Date(date);
+  const today = new Date();
+
+  const isToday = selectedDate.toDateString() === today.toDateString();
+
+  let html = "";
+
+  all.forEach(t => {
+
+  const slotHour = parseInt(t.split(":")[0]);
+
+  if (isToday && slotHour <= currentHour) return;
+
+  if (!taken.includes(t)) {
+  html += `<option value="${t}">${t}</option>`;
+  }
+
+  });
+
+  document.getElementById("time").innerHTML =
+  html || `<option>No slots</option>`;
+
+  };
+
+  /* AUTO LOAD */
+  window.addEventListener("load", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get("success") === "true") {
+      setStatus("Payment successful ✅");
+    }
+
+    if (urlParams.get("canceled") === "true") {
+      setStatus("Payment canceled ❌");
+    }
+  });
+  document.getElementById("date").min =
+  new Date().toISOString().split("T")[0];
+  const heroImages = [
+    "images/1.jpeg",
+    "images/2.jpeg",
+    "images/3.jpeg",
+    "images/4.jpeg",
+    "images/5.jpeg"
+  ];
+
+  let i = 0;
+
+  setInterval(() => {
+    i = (i + 1) % heroImages.length;
+    document.getElementById("heroImg").src = heroImages[i];
+  }, 4000);
+
+
+    
+  </script>
+
+  </body>
+  </html>
