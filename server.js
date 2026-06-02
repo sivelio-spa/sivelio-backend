@@ -79,6 +79,7 @@ app.get("/", (req, res) => {
 });
 app.post("/career-apply", async (req, res) => {
   console.log("🔥 CAREER ENDPOINT HIT");
+  console.log("BODY:", req.body);
   try {
     const data = req.body;
 
