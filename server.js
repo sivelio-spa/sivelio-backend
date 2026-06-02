@@ -103,7 +103,7 @@ product_data: {
   name: "Sivelio Spa Massage Service",
   description: "Massage and wellness appointment booking"
 },
-          unit_amount: price * 100,
+          unit_amount: price,
         },
         quantity: 1,
       }],
