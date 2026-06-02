@@ -88,7 +88,7 @@ app.post("/career-apply", async (req, res) => {
     const data = req.body;
 
     await transporter.sendMail({
-      from: "Sivelio Careers <no-reply@sivelio.com>",
+      from: process.env.MAIL_USER,
       to: "sivelio75@gmail.com",
       subject: "New Career Application",
       text: `
