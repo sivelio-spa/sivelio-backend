@@ -10,7 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
-
+const nodemailer = require("nodemailer");
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -20,7 +20,13 @@ admin.initializeApp({
 });
 
 const app = express();
-
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  }
+});
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
@@ -74,6 +80,35 @@ app.use(express.urlencoded({ extended: true }));
 // TEST
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
+});
+app.post("/career-apply", async (req, res) => {
+  console.log("🔥 CAREER ENDPOINT HIT");
+  try {
+    const data = req.body;
+
+    await transporter.sendMail({
+      from: "Sivelio Careers <no-reply@sivelio.com>",
+      to: "sivelio75@gmail.com",
+      subject: "New Career Application",
+      text: `
+New Application:
+
+Name: ${data.firstName} ${data.lastName}
+Phone: ${data.phone}
+Email: ${data.email}
+Position: ${data.position}
+
+Message:
+${data.message}
+      `
+    });
+
+    res.json({ ok: true });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Ödeme oluşturma
