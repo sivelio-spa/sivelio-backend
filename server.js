@@ -27,7 +27,11 @@ const transporter = nodemailer.createTransport({
     pass: process.env.MAIL_PASS
   }
 });
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"]
+}));
 
 
 
