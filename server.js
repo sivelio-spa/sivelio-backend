@@ -10,7 +10,9 @@ const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -20,18 +22,7 @@ admin.initializeApp({
 });
 
 const app = express();
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS.replace(/\s/g, "")
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 20000,
-});
+
   
 app.use(cors({
   origin: "*",
@@ -90,75 +81,29 @@ app.get("/", (req, res) => {
 app.post("/career-apply", async (req, res) => {
   console.log("🔥 CAREER ENDPOINT HIT");
   console.log("BODY:", req.body);
+
   try {
     const data = req.body;
 
-    await transporter.sendMail({
-      from: process.env.MAIL_USER,
+    await resend.emails.send({
+      from: "Sivelio <onboarding@resend.dev>",
       to: "sivelio75@gmail.com",
       subject: "New Career Application",
-      text: `
-New Application:
-
-Name: ${data.firstName} ${data.lastName}
-Phone: ${data.phone}
-Email: ${data.email}
-Position: ${data.position}
-
-Message:
-${data.message}
+      html: `
+        <h3>New Application</h3>
+        <p><b>Name:</b> ${data.firstName} ${data.lastName}</p>
+        <p><b>Phone:</b> ${data.phone}</p>
+        <p><b>Email:</b> ${data.email}</p>
+        <p><b>Position:</b> ${data.position}</p>
+        <p><b>Message:</b> ${data.message}</p>
       `
     });
 
     res.json({ ok: true });
 
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Ödeme oluşturma
-app.post("/create-checkout-session", async (req, res) => {
-  console.log("CREATE SESSION BODY:", req.body);
-  try {
-    const price = Number(req.body.price);
-
-    if (isNaN(price) || price <= 0) {
-      return res.status(400).json({
-        error: "Invalid price"
-      });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-
-      metadata: {
-        bookingId: req.body.bookingId || ""
-      },
-
-      line_items: [{
-        price_data: {
-          currency: "php",
-product_data: {
-  name: "Sivelio Spa Massage Service",
-  description: "Massage and wellness appointment booking"
-},
-          unit_amount: price,
-        },
-        quantity: 1,
-      }],
-
-      success_url: "https://sivelio.com/?success=true",
-cancel_url: "https://sivelio.com/?canceled=true",
-    });
-
-    return res.json({ url: session.url });
-
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
