@@ -21,12 +21,15 @@ admin.initializeApp({
 
 const app = express();
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS
+    pass: process.env.MAIL_PASS.replace(/\s/g, "")
   }
 });
+  
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
