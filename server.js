@@ -116,3 +116,32 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
+app.post("/career-apply", async (req, res) => {
+  console.log("🔥 CAREER ENDPOINT HIT");
+
+  try {
+    const data = req.body;
+
+    await resend.emails.send({
+      from: "Sivelio <onboarding@resend.dev>",
+      to: "sivelio75@gmail.com",
+      subject: "New Career Application",
+      html: `
+        <h3>New Application</h3>
+        <p><b>Name:</b> ${data.firstName} ${data.lastName}</p>
+        <p><b>Phone:</b> ${data.phone}</p>
+        <p><b>Email:</b> ${data.email}</p>
+        <p><b>Position:</b> ${data.position}</p>
+        <p><b>Message:</b> ${data.message}</p>
+      `
+    });
+
+    console.log("EMAIL SENT");
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.log("EMAIL ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
