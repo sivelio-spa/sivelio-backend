@@ -78,41 +78,15 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
 });
-app.post("/career-apply", async (req, res) => {
-  console.log("🔥 CAREER ENDPOINT HIT");
-  console.log("BODY:", req.body);
-
-  try {
-    const data = req.body;
-
-    await resend.emails.send({
-      from: "Sivelio <onboarding@resend.dev>",
-      to: "sivelio75@gmail.com",
-      subject: "New Career Application",
-      html: `
-        <h3>New Application</h3>
-        <p><b>Name:</b> ${data.firstName} ${data.lastName}</p>
-        <p><b>Phone:</b> ${data.phone}</p>
-        <p><b>Email:</b> ${data.email}</p>
-        <p><b>Position:</b> ${data.position}</p>
-        <p><b>Message:</b> ${data.message}</p>
-      `
-    });
-
-    res.json({ ok: true });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
 app.post("/create-checkout-session", async (req, res) => {
-  console.log("BODY:", req.body);
-  if (!price || !bookingId) {
-  return res.status(400).json({ error: "Missing price or bookingId" });
-}
   try {
     const { price, bookingId } = req.body;
+
+    console.log("BODY:", req.body);
+
+    if (!price || !bookingId) {
+      return res.status(400).json({ error: "Missing price or bookingId" });
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
