@@ -1,5 +1,5 @@
 require("dotenv").config();
-
+console.log("🔥 SERVER ACTIVE - NEW DEPLOY LOADED");
 
 console.log("STARTING SERVER...");
 console.log("STRIPE:", process.env.STRIPE_SECRET_KEY ? "OK" : "MISSING");
