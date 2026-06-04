@@ -78,36 +78,36 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
 });
-app.post("/create-checkout-session", (req, res) => {
-  console.log("🔥 CHECKOUT HIT");
-  res.json({ ok: true });
-});
-app.post("/career-apply", async (req, res) => {
-  console.log("🔥 CAREER ENDPOINT HIT");
-
+app.post("/create-checkout-session", async (req, res) => {
   try {
-    const data = req.body;
+    const { price, bookingId } = req.body;
 
-    await resend.emails.send({
-      from: "Sivelio <onboarding@resend.dev>",
-      to: "sivelio75@gmail.com",
-      subject: "New Career Application",
-      html: `
-        <h3>New Application</h3>
-        <p><b>Name:</b> ${data.firstName} ${data.lastName}</p>
-        <p><b>Phone:</b> ${data.phone}</p>
-        <p><b>Email:</b> ${data.email}</p>
-        <p><b>Position:</b> ${data.position}</p>
-        <p><b>Message:</b> ${data.message}</p>
-      `
+    console.log("BODY:", req.body);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "php",
+            product_data: {
+              name: "Sivelio Booking",
+            },
+            unit_amount: price,
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: "https://sivelio.com/?success=true",
+      cancel_url: "https://sivelio.com/?canceled=true",
+      metadata: { bookingId },
     });
 
-    console.log("EMAIL SENT");
-
-    res.json({ ok: true });
+    res.json({ url: session.url });
 
   } catch (err) {
-    console.log("EMAIL ERROR:", err);
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
