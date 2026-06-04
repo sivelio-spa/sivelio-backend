@@ -78,6 +78,10 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
 });
+app.post("/career-apply", (req, res) => {
+  console.log("🔥 CAREER ENDPOINT HIT");
+  res.json({ ok: true });
+});
 app.post("/create-checkout-session", async (req, res) => {
   try {
     const { price, bookingId } = req.body;
