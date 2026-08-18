@@ -111,6 +111,29 @@ app.post("/create-checkout-session", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// MASSEUSE TEST
+app.get("/test-masseuses", async (req, res) => {
+  try {
+    const snapshot = await admin.firestore()
+      .collection("masseuses")
+      .limit(1)
+      .get();
+
+    res.json({
+      ok: true,
+      masseusesCollectionExists: !snapshot.empty
+    });
+
+  } catch (error) {
+    console.error("MASSEUSE TEST ERROR:", error);
+
+    res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
