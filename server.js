@@ -62,7 +62,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
     if (bookingId) {
       const ref = admin.firestore().collection("bookings").doc(bookingId);
-await ref.set({ status: "paid" }, { merge: true });
+await ref.set({ paymentStatus: "paid" }, { merge: true });
       console.log("Ödeme OK:", bookingId);
     }
   }
