@@ -61,10 +61,69 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     const bookingId = session.metadata.bookingId;
 
     if (bookingId) {
-      const ref = admin.firestore().collection("bookings").doc(bookingId);
-await ref.set({ paymentStatus: "paid" }, { merge: true });
-      console.log("Ödeme OK:", bookingId);
+
+  const db = admin.firestore();
+  const ref = db.collection("bookings").doc(bookingId);
+
+  const bookingSnap = await ref.get();
+
+  if (!bookingSnap.exists) {
+    console.log("Booking bulunamadı:", bookingId);
+  } else {
+
+    const booking = bookingSnap.data();
+
+    await ref.set(
+      { paymentStatus: "paid" },
+      { merge: true }
+    );
+
+    console.log("Ödeme OK:", bookingId);
+
+    if (booking.poolId) {
+
+      const masseusesSnap = await db
+        .collection("masseuses")
+        .where("poolId", "==", booking.poolId)
+        .get();
+
+      const tokens = [
+        ...new Set(
+          masseusesSnap.docs
+            .map(doc => doc.data().fcmToken)
+            .filter(Boolean)
+        )
+      ];
+
+      if (tokens.length > 0) {
+
+        const response = await admin.messaging().sendEachForMulticast({
+          tokens: tokens,
+
+          notification: {
+            title: "Yeni Sivelio Randevusu",
+            body: `${booking.poolId} için yeni ücretli randevu. Paneli açın.`
+          },
+
+          data: {
+            bookingId: bookingId,
+            poolId: String(booking.poolId)
+          }
+        });
+
+        console.log(
+          "Bildirim gönderildi:",
+          response.successCount,
+          "başarılı,",
+          response.failureCount,
+          "başarısız"
+        );
+      } else {
+        console.log("Bu havuzda bildirim tokenı bulunamadı:", booking.poolId);
+      }
     }
+  }
+}
   }
 
   res.json({ received: true });
