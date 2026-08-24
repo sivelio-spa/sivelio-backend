@@ -192,59 +192,7 @@ app.get("/test-masseuses", async (req, res) => {
     });
   }
 });
-// GEÇİCİ BİLDİRİM TESTİ
-app.get("/test-notification", async (req, res) => {
-  try {
-    const db = admin.firestore();
 
-    const masseusesSnap = await db
-      .collection("masseuses")
-      .where("poolId", "==", "Masseuse52")
-      .get();
-
-    const tokens = [
-      ...new Set(
-        masseusesSnap.docs
-          .map(doc => doc.data().fcmToken)
-          .filter(Boolean)
-      )
-    ];
-
-    if (tokens.length === 0) {
-      return res.json({
-        ok: false,
-        message: "FCM token bulunamadı"
-      });
-    }
-
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens: tokens,
-
-      notification: {
-        title: "Sivelio Test Bildirimi",
-        body: "Bildirim sistemi çalışıyor ✅"
-      },
-
-      data: {
-        poolId: "Masseuse52"
-      }
-    });
-
-    res.json({
-      ok: true,
-      successCount: response.successCount,
-      failureCount: response.failureCount
-    });
-
-  } catch (error) {
-    console.error("TEST NOTIFICATION ERROR:", error);
-
-    res.status(500).json({
-      ok: false,
-      error: error.message
-    });
-  }
-});
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
