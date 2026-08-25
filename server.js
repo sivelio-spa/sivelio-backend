@@ -193,61 +193,7 @@ app.get("/test-masseuses", async (req, res) => {
     });
   }
 });
-// GEÇİCİ ONLINE MASÖZ BİLDİRİM TESTİ
-app.get("/test-online-notification", async (req, res) => {
-  try {
-    const db = admin.firestore();
 
-    const masseusesSnap = await db
-      .collection("masseuses")
-      .where("poolId", "==", "Masseuse52")
-      .where("availability", "==", "online")
-      .get();
-
-    const tokens = [
-      ...new Set(
-        masseusesSnap.docs
-          .map(doc => doc.data().fcmToken)
-          .filter(Boolean)
-      )
-    ];
-
-    if (tokens.length === 0) {
-      return res.json({
-        ok: false,
-        message: "Online masöz tokenı bulunamadı"
-      });
-    }
-
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens,
-
-      notification: {
-        title: "Sivelio Online Test",
-        body: "Bu bildirim sadece ONLINE masöze gitmeli ✅"
-      },
-
-      data: {
-        poolId: "Masseuse52"
-      }
-    });
-
-    res.json({
-      ok: true,
-      onlineMasseuseCount: masseusesSnap.size,
-      successCount: response.successCount,
-      failureCount: response.failureCount
-    });
-
-  } catch (error) {
-    console.error("ONLINE TEST ERROR:", error);
-
-    res.status(500).json({
-      ok: false,
-      error: error.message
-    });
-  }
-});
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
