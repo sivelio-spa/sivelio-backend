@@ -83,9 +83,10 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     if (booking.poolId) {
 
       const masseusesSnap = await db
-        .collection("masseuses")
-        .where("poolId", "==", booking.poolId)
-        .get();
+  .collection("masseuses")
+  .where("poolId", "==", booking.poolId)
+  .where("availability", "==", "online")
+  .get();
 
       const tokens = [
         ...new Set(
