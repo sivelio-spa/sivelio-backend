@@ -86,6 +86,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   .collection("masseuses")
   .where("poolId", "==", booking.poolId)
   .where("availability", "==", "online")
+  .where("employmentStatus", "==", "active")
   .get();
 
       const tokens = [
