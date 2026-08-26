@@ -10,6 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -194,38 +195,420 @@ app.get("/test-masseuses", async (req, res) => {
     });
   }
 });
+async function findBestPool(db) {
+  const snap = await db.collection("masseuses").get();
 
+  const counts = Array(100).fill(0);
+
+  snap.forEach(docSnap => {
+    const poolId = String(docSnap.data().poolId || "");
+    const match = poolId.match(/^Masseuse(\d+)$/);
+
+    if (!match) return;
+
+    const number = Number(match[1]);
+
+    if (number >= 1 && number <= 100) {
+      counts[number - 1]++;
+    }
+  });
+
+  let bestIndex = 0;
+
+  for (let i = 1; i < counts.length; i++) {
+    if (counts[i] < counts[bestIndex]) {
+      bestIndex = i;
+    }
+  }
+
+  return `Masseuse${bestIndex + 1}`;
+}
+
+
+app.post("/career-apply", async (req, res) => {
+
+  console.log("🔥 CAREER ENDPOINT HIT");
+
+  const db = admin.firestore();
+
+  let createdUid = null;
+  let applicationRef = null;
+
+  try {
+
+    const firstName = String(req.body.firstName || "").trim();
+    const lastName = String(req.body.lastName || "").trim();
+    const phone = String(req.body.phone || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const position = String(req.body.position || "").trim();
+    const message = String(req.body.message || "").trim();
+
+    if (!firstName || !lastName || !email || !position) {
+      return res.status(400).json({
+        ok: false,
+        error: "Required fields are missing."
+      });
+    }
+
+    const emailIsValid =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    if (!emailIsValid) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid email address."
+      });
+    }
+
+
+    // DRIVER / COURIER:
+    // Normal application only.
+    if (position !== "Therapist") {
+
+      applicationRef = await db
+        .collection("careerApplications")
+        .add({
+          firstName,
+          lastName,
+          phone,
+          email,
+          position,
+          message,
+          status: "received",
+          createdAt:
+            admin.firestore.FieldValue.serverTimestamp()
+        });
+
+      const adminMail = await resend.emails.send({
+        from:
+          process.env.CAREER_FROM_EMAIL ||
+          "Sivelio <onboarding@resend.dev>",
+
+        to: "sivelio75@gmail.com",
+
+        subject: `New Career Application - ${position}`,
+
+        html: `
+          <h3>New Application</h3>
+
+          <p><b>Name:</b> ${firstName} ${lastName}</p>
+          <p><b>Phone:</b> ${phone}</p>
+          <p><b>Email:</b> ${email}</p>
+          <p><b>Position:</b> ${position}</p>
+          <p><b>Message:</b> ${message}</p>
+        `
+      });
+
+      if (adminMail.error) {
+        console.log(
+          "ADMIN EMAIL ERROR:",
+          adminMail.error
+        );
+      }
+
+      return res.json({
+        ok: true,
+        hired: false
+      });
+    }
+
+
+    // THERAPIST:
+    // Existing Firebase account must not be converted automatically.
+    try {
+
+      await admin.auth().getUserByEmail(email);
+
+      return res.status(409).json({
+        ok: false,
+        error:
+          "This email address is already registered."
+      });
+
+    } catch (error) {
+
+      if (error.code !== "auth/user-not-found") {
+        throw error;
+      }
+    }
+
+
+    // Random temporary password.
+    // Applicant never needs to know this password.
+    const temporaryPassword =
+      crypto.randomBytes(24).toString("hex") +
+      "Aa1!";
+
+
+    // Create Firebase Authentication account.
+    const userRecord =
+      await admin.auth().createUser({
+        email,
+        password: temporaryPassword,
+        displayName: `${firstName} ${lastName}`,
+        disabled: false
+      });
+
+    createdUid = userRecord.uid;
+
+
+    // Automatically choose the least populated pool.
+    const poolId = await findBestPool(db);
+
+
+    // Create masseuse record.
+    await db
+      .collection("masseuses")
+      .doc(createdUid)
+      .set({
+        uid: createdUid,
+
+        name: `${firstName} ${lastName}`,
+
+        firstName,
+        lastName,
+
+        email,
+        phone,
+
+        poolId,
+
+        availability: "offline",
+
+        employmentStatus: "active",
+
+        role: "masseuse",
+
+        source: "career",
+
+        createdAt:
+          admin.firestore.FieldValue.serverTimestamp()
+      });
+
+
+    // Save the career application.
+    applicationRef = await db
+      .collection("careerApplications")
+      .add({
+        firstName,
+        lastName,
+        phone,
+        email,
+        position,
+        message,
+
+        status: "hired_pending_onboarding",
+
+        masseuseUid: createdUid,
+        poolId,
+
+        createdAt:
+          admin.firestore.FieldValue.serverTimestamp()
+      });
+
+
+    // Secure password setup link.
+    const passwordSetupLink =
+      await admin.auth().generatePasswordResetLink(
+        email,
+        {
+          url: "https://sivelio.com/login.html"
+        }
+      );
+
+
+    // Send the applicant their hiring/onboarding email.
+    const applicantMail =
+      await resend.emails.send({
+
+        from:
+          process.env.CAREER_FROM_EMAIL ||
+          "Sivelio <onboarding@resend.dev>",
+
+        to: email,
+
+        subject:
+          "Congratulations - You have been hired by Sivelio",
+
+        html: `
+          <h2>Welcome to Sivelio</h2>
+
+          <p>
+            Hello ${firstName},
+          </p>
+
+          <p>
+            Congratulations! You have been hired
+            as a Sivelio Therapist.
+          </p>
+
+          <p>
+            Your therapist account has been created.
+          </p>
+
+          <p>
+            Your account starts in
+            <b>OFFLINE</b> mode.
+            You will not receive customer bookings
+            until you sign in and choose Online.
+          </p>
+
+          <p>
+            Use the secure link below to create
+            your password:
+          </p>
+
+          <p>
+            <a href="${passwordSetupLink}">
+              Create My Sivelio Password
+            </a>
+          </p>
+
+          <p>
+            After creating your password,
+            sign in to the Sivelio therapist panel.
+          </p>
+
+          <p>
+            Welcome to the Sivelio team.
+          </p>
+        `
+      });
+
+
+    if (applicantMail.error) {
+
+      console.log(
+        "APPLICANT EMAIL ERROR:",
+        applicantMail.error
+      );
+
+      // Do not leave an unusable therapist account.
+      await db
+        .collection("masseuses")
+        .doc(createdUid)
+        .delete();
+
+      await admin.auth().deleteUser(createdUid);
+
+      await applicationRef.update({
+        status: "onboarding_email_failed"
+      });
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "The onboarding email could not be sent."
+      });
+    }
+
+
+    await applicationRef.update({
+      status: "hired"
+    });
+
+
+    // Inform admin too.
+    const adminMail =
+      await resend.emails.send({
+
+        from:
+          process.env.CAREER_FROM_EMAIL ||
+          "Sivelio <onboarding@resend.dev>",
+
+        to: "sivelio75@gmail.com",
+
+        subject:
+          "New Sivelio Therapist Automatically Hired",
+
+        html: `
+          <h3>New Therapist</h3>
+
+          <p>
+            <b>Name:</b>
+            ${firstName} ${lastName}
+          </p>
+
+          <p>
+            <b>Email:</b>
+            ${email}
+          </p>
+
+          <p>
+            <b>Phone:</b>
+            ${phone}
+          </p>
+
+          <p>
+            <b>Pool:</b>
+            ${poolId}
+          </p>
+
+          <p>
+            <b>Status:</b>
+            Active / Offline
+          </p>
+        `
+      });
+
+
+    if (adminMail.error) {
+      console.log(
+        "ADMIN EMAIL ERROR:",
+        adminMail.error
+      );
+    }
+
+
+    console.log(
+      "✅ THERAPIST AUTO HIRED:",
+      email,
+      poolId
+    );
+
+
+    return res.json({
+      ok: true,
+      hired: true,
+      poolId
+    });
+
+
+  } catch (err) {
+
+    console.log("CAREER ERROR:", err);
+
+    // Cleanup if account creation stopped halfway.
+    if (createdUid) {
+
+      try {
+        await db
+          .collection("masseuses")
+          .doc(createdUid)
+          .delete();
+      } catch (_) {}
+
+      try {
+        await admin.auth().deleteUser(createdUid);
+      } catch (_) {}
+    }
+
+    if (applicationRef) {
+      try {
+        await applicationRef.update({
+          status: "failed"
+        });
+      } catch (_) {}
+    }
+
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
-});
-app.post("/career-apply", async (req, res) => {
-  console.log("🔥 CAREER ENDPOINT HIT");
-
-  try {
-    const data = req.body;
-
-    await resend.emails.send({
-      from: "Sivelio <onboarding@resend.dev>",
-      to: "sivelio75@gmail.com",
-      subject: "New Career Application",
-      html: `
-        <h3>New Application</h3>
-        <p><b>Name:</b> ${data.firstName} ${data.lastName}</p>
-        <p><b>Phone:</b> ${data.phone}</p>
-        <p><b>Email:</b> ${data.email}</p>
-        <p><b>Position:</b> ${data.position}</p>
-        <p><b>Message:</b> ${data.message}</p>
-      `
-    });
-
-    console.log("EMAIL SENT");
-
-    res.json({ ok: true });
-
-  } catch (err) {
-    console.log("EMAIL ERROR:", err);
-    res.status(500).json({ error: err.message });
-  }
 });
