@@ -140,6 +140,47 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
 });
+app.get("/pool-capacity", async (req, res) => {
+  try {
+    const poolId = String(req.query.poolId || "").trim();
+
+    if (!/^Masseuse([1-9]|[1-9][0-9]|100)$/.test(poolId)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid poolId"
+      });
+    }
+
+    const snapshot = await admin.firestore()
+      .collection("masseuses")
+      .where("poolId", "==", poolId)
+      .get();
+
+    let capacity = 0;
+
+    snapshot.forEach(docSnap => {
+      const masseuse = docSnap.data();
+
+      if (masseuse.employmentStatus === "active") {
+        capacity++;
+      }
+    });
+
+    res.json({
+      ok: true,
+      poolId,
+      capacity
+    });
+
+  } catch (error) {
+    console.error("POOL CAPACITY ERROR:", error);
+
+    res.status(500).json({
+      ok: false,
+      error: "Could not get pool capacity"
+    });
+  }
+});
 app.post("/create-checkout-session", async (req, res) => {
   try {
     const { price, bookingId } = req.body;
