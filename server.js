@@ -23,8 +23,54 @@ admin.initializeApp({
 });
 
 const app = express();
+const SERVICE_PRICES = {
+  Relaxation: 140000,
+  "Deep Tissue": 160000,
+  Aromatherapy: 150000
+};
+async function getActivePoolCapacity(poolId) {
 
-  
+  const snapshot =
+    await admin.firestore()
+      .collection("masseuses")
+      .where("poolId", "==", poolId)
+      .get();
+
+  let capacity = 0;
+
+  snapshot.forEach(docSnap => {
+
+    const masseuse = docSnap.data();
+
+    if (
+      masseuse.employmentStatus === "active"
+    ) {
+      capacity++;
+    }
+  });
+
+  return capacity;
+}
+function bookingBlocksCapacity(booking, now) {
+
+  if (
+    booking.status === "cancelled" ||
+    booking.status === "archived" ||
+    booking.status === "completed"
+  ) {
+    return false;
+  }
+
+  if (
+    booking.status === "pending" &&
+    booking.paymentStatus !== "paid" &&
+    Number(booking.expiresAt || 0) <= now
+  ) {
+    return false;
+  }
+
+  return true;
+}
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
@@ -181,12 +227,321 @@ app.get("/pool-capacity", async (req, res) => {
     });
   }
 });
+app.post("/create-booking", async (req, res) => {
+
+  const db = admin.firestore();
+
+  try {
+
+    const name =
+      String(req.body.name || "").trim();
+
+    const address =
+      String(req.body.address || "").trim();
+
+    const service =
+      String(req.body.service || "").trim();
+
+    const date =
+      String(req.body.date || "").trim();
+
+    const time =
+      String(req.body.time || "").trim();
+
+    const poolId =
+      String(req.body.poolId || "").trim();
+
+
+    if (
+      !name ||
+      !address ||
+      !service ||
+      !date ||
+      !time ||
+      !poolId
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Required fields are missing."
+      });
+    }
+
+
+    if (!SERVICE_PRICES[service]) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid service."
+      });
+    }
+
+
+    if (
+      !/^Masseuse([1-9]|[1-9][0-9]|100)$/.test(poolId)
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid poolId."
+      });
+    }
+
+
+    const bookingRef =
+      db.collection("bookings").doc();
+
+    const chatKey =
+      crypto.randomUUID();
+const slotLockId =
+  `${poolId}_${date}_${time}`
+    .replace(/[^A-Za-z0-9_-]/g, "_");
+
+const slotLockRef =
+  db.collection("bookingSlotLocks")
+    .doc(slotLockId);
+
+    await db.runTransaction(
+      async transaction => {
+await transaction.get(
+  slotLockRef
+);
+        const masseuseQuery =
+          db.collection("masseuses")
+            .where(
+              "poolId",
+              "==",
+              poolId
+            );
+
+        const bookingQuery =
+          db.collection("bookings")
+            .where(
+              "date",
+              "==",
+              date
+            );
+
+
+        const masseuseSnapshot =
+          await transaction.get(
+            masseuseQuery
+          );
+
+        const bookingSnapshot =
+          await transaction.get(
+            bookingQuery
+          );
+
+
+        let capacity = 0;
+
+        masseuseSnapshot.forEach(
+          docSnap => {
+
+            const masseuse =
+              docSnap.data();
+
+            if (
+              masseuse.employmentStatus ===
+              "active"
+            ) {
+              capacity++;
+            }
+          }
+        );
+
+
+        if (capacity <= 0) {
+          throw new Error(
+            "NO_CAPACITY"
+          );
+        }
+
+
+        const now =
+          Date.now();
+
+        let usedCapacity = 0;
+
+
+        bookingSnapshot.forEach(
+          docSnap => {
+
+            const booking =
+              docSnap.data();
+
+            const bookingPool =
+              booking.poolId ||
+              booking.masseuse;
+
+
+            if (
+              bookingPool !== poolId ||
+              booking.time !== time
+            ) {
+              return;
+            }
+
+
+            if (
+              bookingBlocksCapacity(
+                booking,
+                now
+              )
+            ) {
+              usedCapacity++;
+            }
+          }
+        );
+
+
+        if (
+          usedCapacity >= capacity
+        ) {
+          throw new Error(
+            "TIME_FULL"
+          );
+        }
+transaction.set(
+  slotLockRef,
+  {
+    updatedAt:
+      admin.firestore.FieldValue.serverTimestamp()
+  },
+  {
+    merge: true
+  }
+);
+
+        transaction.set(
+          bookingRef,
+          {
+            name,
+            address,
+            service,
+            date,
+            time,
+
+            masseuse: poolId,
+            poolId,
+
+            assignedMasseuseUid: null,
+            assignedMasseuseName: null,
+
+            chatKey,
+
+            price:
+              SERVICE_PRICES[service],
+
+            status: "pending",
+            paymentStatus: "pending",
+
+            createdAt: now,
+            expiresAt:
+              now + 15 * 60 * 1000
+          }
+        );
+      }
+    );
+
+
+    return res.json({
+      ok: true,
+      bookingId: bookingRef.id,
+      price: SERVICE_PRICES[service]
+    });
+
+
+  } catch (error) {
+
+    if (
+      error.message === "TIME_FULL"
+    ) {
+      return res.status(409).json({
+        ok: false,
+        error: "TIME_FULL"
+      });
+    }
+
+
+    if (
+      error.message === "NO_CAPACITY"
+    ) {
+      return res.status(409).json({
+        ok: false,
+        error: "NO_CAPACITY"
+      });
+    }
+
+
+    console.error(
+      "CREATE BOOKING ERROR:",
+      error
+    );
+
+
+    return res.status(500).json({
+      ok: false,
+      error:
+        "Booking could not be created."
+    });
+  }
+});
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { price, bookingId } = req.body;
+    const { bookingId } = req.body;
 
     console.log("BODY:", req.body);
+if (!bookingId) {
+  return res.status(400).json({
+    error: "bookingId is required"
+  });
+}
 
+const bookingRef =
+  admin.firestore()
+    .collection("bookings")
+    .doc(String(bookingId));
+
+const bookingSnap =
+  await bookingRef.get();
+
+if (!bookingSnap.exists) {
+  return res.status(404).json({
+    error: "Booking not found"
+  });
+}
+
+const booking =
+  bookingSnap.data();
+
+if (
+  booking.status !== "pending" ||
+  booking.paymentStatus !== "pending"
+) {
+  return res.status(409).json({
+    error: "Booking is not payable"
+  });
+}
+
+if (
+  Number(booking.expiresAt || 0) <=
+  Date.now()
+) {
+  return res.status(409).json({
+    error: "Booking expired"
+  });
+}
+
+const expectedPrice =
+  SERVICE_PRICES[booking.service];
+
+if (
+  !expectedPrice ||
+  Number(booking.price) !== expectedPrice
+) {
+  return res.status(400).json({
+    error: "Invalid booking price"
+  });
+}
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -197,7 +552,7 @@ app.post("/create-checkout-session", async (req, res) => {
             product_data: {
               name: "Sivelio Booking",
             },
-            unit_amount: price,
+            unit_amount: expectedPrice,
           },
           quantity: 1,
         },
