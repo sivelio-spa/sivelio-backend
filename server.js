@@ -71,10 +71,47 @@ function bookingBlocksCapacity(booking, now) {
 
   return true;
 }
+async function requireFirebaseAuth(req, res, next) {
+
+  try {
+
+    const authHeader =
+      String(req.headers.authorization || "");
+
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        ok: false,
+        error: "Authentication required."
+      });
+    }
+
+    const idToken =
+      authHeader.substring(7);
+
+    const decodedToken =
+      await admin.auth().verifyIdToken(idToken);
+
+    req.user = decodedToken;
+
+    next();
+
+  } catch (error) {
+
+    console.error(
+      "AUTH ERROR:",
+      error.message
+    );
+
+    return res.status(401).json({
+      ok: false,
+      error: "Invalid authentication."
+    });
+  }
+}
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 
@@ -227,7 +264,7 @@ app.get("/pool-capacity", async (req, res) => {
     });
   }
 });
-app.post("/create-booking", async (req, res) => {
+app.post("/create-booking", requireFirebaseAuth, async (req, res) => {
 
   const db = admin.firestore();
 
@@ -425,7 +462,7 @@ transaction.set(
 
             assignedMasseuseUid: null,
             assignedMasseuseName: null,
-
+            customerUid: req.user.uid,
             chatKey,
 
             price:
@@ -485,7 +522,7 @@ transaction.set(
     });
   }
 });
-app.post("/create-checkout-session", async (req, res) => {
+app.post("/create-checkout-session", requireFirebaseAuth, async (req, res) => {
   try {
     const { bookingId } = req.body;
 
@@ -512,6 +549,14 @@ if (!bookingSnap.exists) {
 
 const booking =
   bookingSnap.data();
+  if (
+  booking.customerUid !==
+  req.user.uid
+) {
+  return res.status(403).json({
+    error: "This booking does not belong to you."
+  });
+}
 
 if (
   booking.status !== "pending" ||
