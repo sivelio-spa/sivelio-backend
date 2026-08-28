@@ -163,6 +163,45 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     );
 
     console.log("Ödeme OK:", bookingId);
+    if (
+  booking.poolId &&
+  booking.status === "pending" &&
+  !booking.assignedMasseuseUid
+) {
+
+  await db
+    .collection("bookingDispatches")
+    .doc(bookingId)
+    .set(
+      {
+        bookingId: bookingId,
+
+        poolId:
+          String(booking.poolId),
+
+        date:
+          String(booking.date || ""),
+
+        time:
+          String(booking.time || ""),
+
+        service:
+          String(booking.service || ""),
+
+        price:
+          Number(booking.price) || 0,
+
+        status: "available",
+        paymentStatus: "paid",
+
+        createdAt:
+          admin.firestore.FieldValue.serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+}
 
     if (booking.poolId) {
 
@@ -737,6 +776,208 @@ if (
     res.status(500).json({ error: err.message });
   }
 });
+app.post(
+  "/accept-booking",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(
+          req.body.bookingId || ""
+        ).trim();
+
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+
+      const db =
+        admin.firestore();
+
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error: "Masseuse account not found."
+        });
+      }
+
+
+      const masseuseRef =
+        masseuseSnapshot.docs[0].ref;
+
+      const bookingRef =
+        db.collection("bookings")
+          .doc(bookingId);
+
+      const dispatchRef =
+        db.collection("bookingDispatches")
+          .doc(bookingId);
+
+
+      await db.runTransaction(
+        async transaction => {
+
+          const bookingSnap =
+            await transaction.get(
+              bookingRef
+            );
+
+          const masseuseSnap =
+            await transaction.get(
+              masseuseRef
+            );
+
+
+          if (!bookingSnap.exists) {
+            throw new Error(
+              "BOOKING_NOT_FOUND"
+            );
+          }
+
+
+          if (!masseuseSnap.exists) {
+            throw new Error(
+              "MASSEUSE_NOT_FOUND"
+            );
+          }
+
+
+          const booking =
+            bookingSnap.data();
+
+          const masseuse =
+            masseuseSnap.data();
+
+
+          if (
+            masseuse.uid !==
+            req.user.uid
+          ) {
+            throw new Error(
+              "NOT_AUTHORIZED"
+            );
+          }
+
+
+          if (
+            masseuse.employmentStatus !==
+            "active"
+          ) {
+            throw new Error(
+              "ACCOUNT_NOT_ACTIVE"
+            );
+          }
+
+
+          if (
+            masseuse.availability !==
+            "online"
+          ) {
+            throw new Error(
+              "MASSEUSE_OFFLINE"
+            );
+          }
+
+
+          if (
+            booking.status !== "pending" ||
+            booking.paymentStatus !== "paid" ||
+            booking.assignedMasseuseUid
+          ) {
+            throw new Error(
+              "BOOKING_NOT_AVAILABLE"
+            );
+          }
+
+
+          if (
+            booking.poolId !==
+            masseuse.poolId
+          ) {
+            throw new Error(
+              "WRONG_POOL"
+            );
+          }
+
+
+          transaction.update(
+            bookingRef,
+            {
+              assignedMasseuseUid:
+                masseuse.uid,
+
+              assignedMasseuseName:
+                masseuse.name,
+
+              status: "assigned",
+
+              chatKey:
+                booking.chatKey ||
+                bookingId,
+
+              assignedAt:
+                admin.firestore.FieldValue
+                  .serverTimestamp()
+            }
+          );
+
+
+          transaction.update(
+            masseuseRef,
+            {
+              availability:
+                "offline"
+            }
+          );
+
+
+          transaction.delete(
+            dispatchRef
+          );
+        }
+      );
+
+
+      return res.json({
+        ok: true
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "ACCEPT BOOKING ERROR:",
+        error
+      );
+
+      return res.status(409).json({
+        ok: false,
+        error:
+          error.message ||
+          "Booking could not be accepted."
+      });
+    }
+  }
+);
 // MASSEUSE TEST
 app.get("/test-masseuses", async (req, res) => {
   try {
