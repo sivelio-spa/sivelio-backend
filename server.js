@@ -264,6 +264,129 @@ app.get("/pool-capacity", async (req, res) => {
     });
   }
 });
+app.get("/slot-availability", async (req, res) => {
+
+  try {
+
+    const poolId =
+      String(req.query.poolId || "").trim();
+
+    const date =
+      String(req.query.date || "").trim();
+
+
+    if (
+      !/^Masseuse([1-9]|[1-9][0-9]|100)$/.test(poolId)
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid poolId."
+      });
+    }
+
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date)
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid date."
+      });
+    }
+
+
+    const db =
+      admin.firestore();
+
+    const capacity =
+      await getActivePoolCapacity(poolId);
+
+
+    const bookingSnapshot =
+      await db
+        .collection("bookings")
+        .where("date", "==", date)
+        .get();
+
+
+    const bookingCounts = {};
+
+    const now = Date.now();
+
+
+    bookingSnapshot.forEach(docSnap => {
+
+      const booking =
+        docSnap.data();
+
+      const bookingPool =
+        booking.poolId ||
+        booking.masseuse;
+
+
+      if (bookingPool !== poolId) {
+        return;
+      }
+
+
+      if (
+        !bookingBlocksCapacity(
+          booking,
+          now
+        )
+      ) {
+        return;
+      }
+
+
+      if (!booking.time) {
+        return;
+      }
+
+
+      bookingCounts[booking.time] =
+        (bookingCounts[booking.time] || 0) + 1;
+    });
+
+
+    const unavailableTimes = [];
+
+    for (let i = 0; i < 24; i++) {
+
+      const hour =
+        String(i).padStart(2, "0") + ":00";
+
+      const used =
+        bookingCounts[hour] || 0;
+
+      if (
+        capacity === 0 ||
+        used >= capacity
+      ) {
+        unavailableTimes.push(hour);
+      }
+    }
+
+
+    return res.json({
+      ok: true,
+      unavailableTimes
+    });
+
+  } catch (error) {
+
+    console.error(
+      "SLOT AVAILABILITY ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error:
+        "Availability could not be loaded."
+    });
+  }
+});
 app.post("/create-booking", requireFirebaseAuth, async (req, res) => {
 
   const db = admin.firestore();
