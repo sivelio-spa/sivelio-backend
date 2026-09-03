@@ -978,6 +978,103 @@ app.post(
     }
   }
 );
+app.post(
+  "/reject-booking",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(req.body.bookingId || "").trim();
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+      const db = admin.firestore();
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where("uid", "==", req.user.uid)
+          .limit(1)
+          .get();
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error: "Masseuse account not found."
+        });
+      }
+
+      const masseuse =
+        masseuseSnapshot.docs[0].data();
+
+      if (masseuse.employmentStatus !== "active") {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+      const dispatchRef =
+        db.collection("bookingDispatches")
+          .doc(bookingId);
+
+      const dispatchSnap =
+        await dispatchRef.get();
+
+      if (!dispatchSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "BOOKING_NOT_AVAILABLE"
+        });
+      }
+
+      const dispatch =
+        dispatchSnap.data();
+
+      if (dispatch.poolId !== masseuse.poolId) {
+        return res.status(403).json({
+          ok: false,
+          error: "WRONG_POOL"
+        });
+      }
+
+      await dispatchRef.set(
+        {
+          rejectedByUids:
+            admin.firestore.FieldValue.arrayUnion(
+              req.user.uid
+            )
+        },
+        {
+          merge: true
+        }
+      );
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "REJECT BOOKING ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: "Booking could not be rejected."
+      });
+    }
+  }
+);
 // MASSEUSE TEST
 app.get("/test-masseuses", async (req, res) => {
   try {
