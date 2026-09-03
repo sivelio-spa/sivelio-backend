@@ -1269,6 +1269,17 @@ app.post(
               "WRONG_POOL"
             );
           }
+          if (
+  !masseuseWorksAt(
+    masseuse,
+    String(booking.date || ""),
+    String(booking.time || "")
+  )
+) {
+  throw new Error(
+    "OUTSIDE_WORKING_HOURS"
+  );
+}
 
 
           transaction.update(
