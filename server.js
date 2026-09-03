@@ -172,10 +172,42 @@ async function requireFirebaseAuth(req, res, next) {
     });
   }
 }
+const allowedOrigins = [
+  "https://sivelio.com",
+  "https://www.sivelio.com",
+  "https://sivelio.web.app",
+  "https://sivelio.firebaseapp.com",
+  "http://127.0.0.1:5500",
+  "http://localhost:5500",
+  "http://localhost",
+  "https://localhost",
+  "capacitor://localhost"
+];
+
 app.use(cors({
-  origin: "*",
+  origin: function (origin, callback) {
+
+    // Stripe webhook / server-to-server istekleri gibi
+    // Origin göndermeyen istekleri engelleme.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error("Origin not allowed by CORS")
+    );
+  },
+
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization"
+  ]
 }));
 
 
@@ -1059,7 +1091,7 @@ app.post("/create-checkout-session", requireFirebaseAuth, async (req, res) => {
   try {
     const { bookingId } = req.body;
 
-    console.log("BODY:", req.body);
+    
 if (!bookingId) {
   return res.status(400).json({
     error: "bookingId is required"
@@ -1796,29 +1828,7 @@ app.post(
     }
   }
 );
-// MASSEUSE TEST
 
-app.get("/test-masseuses", async (req, res) => {
-  try {
-    const snapshot = await admin.firestore()
-      .collection("masseuses")
-      .limit(1)
-      .get();
-
-    res.json({
-      ok: true,
-      masseusesCollectionExists: !snapshot.empty
-    });
-
-  } catch (error) {
-    console.error("MASSEUSE TEST ERROR:", error);
-
-    res.status(500).json({
-      ok: false,
-      error: error.message
-    });
-  }
-});
 async function findBestPool(db) {
   const snap = await db.collection("masseuses").get();
 
@@ -1883,7 +1893,12 @@ app.post("/career-apply", async (req, res) => {
         error: "Invalid email address."
       });
     }
-
+if (position !== "Therapist") {
+  return res.status(400).json({
+    ok: false,
+    error: "Only Therapist applications are accepted."
+  });
+}
 
     // DRIVER / COURIER:
     // Normal application only.
