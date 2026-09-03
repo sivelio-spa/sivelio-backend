@@ -71,6 +71,70 @@ function bookingBlocksCapacity(booking, now) {
 
   return true;
 }
+const WEEK_DAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday"
+];
+
+function masseuseWorksAt(
+  masseuse,
+  date,
+  time
+) {
+
+  const schedule =
+    masseuse.weeklyAvailability;
+
+  // Henüz takvim oluşturmamış eski hesaplar
+  // mevcut sistemdeki gibi çalışmaya devam eder.
+  if (
+    !schedule ||
+    typeof schedule !== "object"
+  ) {
+    return true;
+  }
+
+  const dayIndex =
+    new Date(
+      date + "T12:00:00Z"
+    ).getUTCDay();
+
+  const dayName =
+    WEEK_DAYS[dayIndex];
+
+  const day =
+    schedule[dayName];
+
+  if (
+    !day ||
+    day.enabled !== true
+  ) {
+    return false;
+  }
+
+  const start =
+    String(day.start || "");
+
+  const end =
+    String(day.end || "");
+
+  if (
+    !/^\d{2}:\d{2}$/.test(start) ||
+    !/^\d{2}:\d{2}$/.test(end)
+  ) {
+    return false;
+  }
+
+  return (
+    time >= start &&
+    time < end
+  );
+}
 async function requireFirebaseAuth(req, res, next) {
 
   try {
@@ -213,12 +277,21 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   .get();
 
       const tokens = [
-        ...new Set(
-          masseusesSnap.docs
-            .map(doc => doc.data().fcmToken)
-            .filter(Boolean)
+  ...new Set(
+    masseusesSnap.docs
+      .filter(docSnap =>
+        masseuseWorksAt(
+          docSnap.data(),
+          String(booking.date || ""),
+          String(booking.time || "")
         )
-      ];
+      )
+      .map(docSnap =>
+        docSnap.data().fcmToken
+      )
+      .filter(Boolean)
+  )
+];
 
       if (tokens.length > 0) {
 
@@ -367,6 +440,190 @@ app.get("/available-pools", async (req, res) => {
     });
   }
 });
+app.get(
+  "/masseuse-schedule",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const db =
+        admin.firestore();
+
+      const snapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+      if (snapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Masseuse account not found."
+        });
+      }
+
+      const masseuse =
+        snapshot.docs[0].data();
+
+      return res.json({
+        ok: true,
+        weeklyAvailability:
+          masseuse.weeklyAvailability ||
+          null
+      });
+
+    } catch (error) {
+
+      console.error(
+        "GET SCHEDULE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Schedule could not be loaded."
+      });
+    }
+  }
+);
+
+
+app.post(
+  "/masseuse-schedule",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const db =
+        admin.firestore();
+
+      const snapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+      if (snapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Masseuse account not found."
+        });
+      }
+
+      const masseuseRef =
+        snapshot.docs[0].ref;
+
+      const masseuse =
+        snapshot.docs[0].data();
+
+      if (
+        masseuse.employmentStatus !==
+        "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+      const incoming =
+        req.body.weeklyAvailability;
+
+      if (
+        !incoming ||
+        typeof incoming !== "object"
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Invalid schedule."
+        });
+      }
+
+      const normalized = {};
+
+      for (
+        const dayName of WEEK_DAYS
+      ) {
+
+        const day =
+          incoming[dayName] || {};
+
+        const enabled =
+          day.enabled === true;
+
+        const start =
+          String(
+            day.start || "09:00"
+          );
+
+        const end =
+          String(
+            day.end || "18:00"
+          );
+
+        if (
+          enabled &&
+          (
+            !/^\d{2}:\d{2}$/.test(start) ||
+            !/^\d{2}:\d{2}$/.test(end) ||
+            start >= end
+          )
+        ) {
+          return res.status(400).json({
+            ok: false,
+            error:
+              "Invalid working hours."
+          });
+        }
+
+        normalized[dayName] = {
+          enabled,
+          start,
+          end
+        };
+      }
+
+      await masseuseRef.update({
+        weeklyAvailability:
+          normalized
+      });
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "SAVE SCHEDULE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Schedule could not be saved."
+      });
+    }
+  }
+);
 app.get("/slot-availability", async (req, res) => {
 
   try {
@@ -401,9 +658,15 @@ app.get("/slot-availability", async (req, res) => {
     const db =
       admin.firestore();
 
-    const capacity =
-      await getActivePoolCapacity(poolId);
-
+  const masseuseSnapshot =
+  await db
+    .collection("masseuses")
+    .where(
+      "poolId",
+      "==",
+      poolId
+    )
+    .get();
 
     const bookingSnapshot =
       await db
@@ -458,7 +721,27 @@ app.get("/slot-availability", async (req, res) => {
 
       const hour =
         String(i).padStart(2, "0") + ":00";
+let capacity = 0;
 
+masseuseSnapshot.forEach(
+  docSnap => {
+
+    const masseuse =
+      docSnap.data();
+
+    if (
+      masseuse.employmentStatus ===
+        "active" &&
+      masseuseWorksAt(
+        masseuse,
+        date,
+        hour
+      )
+    ) {
+      capacity++;
+    }
+  }
+);
       const used =
         bookingCounts[hour] || 0;
 
@@ -603,11 +886,16 @@ await transaction.get(
               docSnap.data();
 
             if (
-              masseuse.employmentStatus ===
-              "active"
-            ) {
-              capacity++;
-            }
+  masseuse.employmentStatus ===
+    "active" &&
+  masseuseWorksAt(
+    masseuse,
+    date,
+    time
+  )
+) {
+  capacity++;
+}
           }
         );
 
