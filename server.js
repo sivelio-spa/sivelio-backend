@@ -232,7 +232,26 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   booking.status === "pending" &&
   !booking.assignedMasseuseUid
 ) {
+const eligibleMasseusesSnap =
+  await db
+    .collection("masseuses")
+    .where("poolId", "==", booking.poolId)
+    .where("employmentStatus", "==", "active")
+    .get();
 
+const eligibleUids =
+  eligibleMasseusesSnap.docs
+    .filter(docSnap =>
+      masseuseWorksAt(
+        docSnap.data(),
+        String(booking.date || ""),
+        String(booking.time || "")
+      )
+    )
+    .map(docSnap =>
+      String(docSnap.data().uid || "").trim()
+    )
+    .filter(Boolean);
   await db
     .collection("bookingDispatches")
     .doc(bookingId)
@@ -242,7 +261,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
         poolId:
           String(booking.poolId),
-
+eligibleUids,
         date:
           String(booking.date || ""),
 
