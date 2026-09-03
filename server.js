@@ -303,6 +303,70 @@ app.get("/pool-capacity", async (req, res) => {
     });
   }
 });
+app.get("/available-pools", async (req, res) => {
+
+  try {
+
+    const snapshot =
+      await admin.firestore()
+        .collection("masseuses")
+        .where(
+          "employmentStatus",
+          "==",
+          "active"
+        )
+        .get();
+
+    const poolCounts = {};
+
+    snapshot.forEach(docSnap => {
+
+      const poolId =
+        String(
+          docSnap.data().poolId || ""
+        );
+
+      if (
+        !/^Masseuse([1-9]|[1-9][0-9]|100)$/
+          .test(poolId)
+      ) {
+        return;
+      }
+
+      poolCounts[poolId] =
+        (poolCounts[poolId] || 0) + 1;
+    });
+
+    const pools =
+      Object.keys(poolCounts)
+        .sort((a, b) => {
+
+          return (
+            Number(a.replace("Masseuse", "")) -
+            Number(b.replace("Masseuse", ""))
+          );
+        });
+
+    return res.json({
+      ok: true,
+      pools,
+      poolCounts
+    });
+
+  } catch (error) {
+
+    console.error(
+      "AVAILABLE POOLS ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error:
+        "Available pools could not be loaded."
+    });
+  }
+});
 app.get("/slot-availability", async (req, res) => {
 
   try {
