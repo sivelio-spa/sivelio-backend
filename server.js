@@ -1427,7 +1427,348 @@ app.post(
     }
   }
 );
+app.get(
+  "/private-session-note",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(req.query.bookingId || "").trim();
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+      const db = admin.firestore();
+
+      const bookingSnap =
+        await db
+          .collection("bookings")
+          .doc(bookingId)
+          .get();
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "Booking not found."
+        });
+      }
+
+      const booking =
+        bookingSnap.data();
+
+      if (
+        booking.assignedMasseuseUid !==
+        req.user.uid
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+      const noteSnap =
+        await db
+          .collection("masseusePrivateNotes")
+          .doc(bookingId)
+          .get();
+
+      return res.json({
+        ok: true,
+        note:
+          noteSnap.exists
+            ? String(noteSnap.data().note || "")
+            : ""
+      });
+
+    } catch (error) {
+
+      console.error(
+        "GET PRIVATE NOTE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: "Private note could not be loaded."
+      });
+    }
+  }
+);
+
+
+app.post(
+  "/private-session-note",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(req.body.bookingId || "").trim();
+
+      const note =
+        String(req.body.note || "").trim();
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+      if (note.length > 2000) {
+        return res.status(400).json({
+          ok: false,
+          error: "Note is too long."
+        });
+      }
+
+      const db = admin.firestore();
+
+      const bookingSnap =
+        await db
+          .collection("bookings")
+          .doc(bookingId)
+          .get();
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "Booking not found."
+        });
+      }
+
+      const booking =
+        bookingSnap.data();
+
+      if (
+        booking.assignedMasseuseUid !==
+        req.user.uid
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+      await db
+        .collection("masseusePrivateNotes")
+        .doc(bookingId)
+        .set(
+          {
+            bookingId,
+            masseuseUid: req.user.uid,
+            note,
+            updatedAt:
+              admin.firestore.FieldValue
+                .serverTimestamp()
+          },
+          {
+            merge: true
+          }
+        );
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "SAVE PRIVATE NOTE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: "Private note could not be saved."
+      });
+    }
+  }
+);
+app.get(
+  "/masseuse-payout-profile",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const db = admin.firestore();
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where("uid", "==", req.user.uid)
+          .limit(1)
+          .get();
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error: "Masseuse account not found."
+        });
+      }
+
+      const profileSnap =
+        await db
+          .collection("masseusePayoutProfiles")
+          .doc(req.user.uid)
+          .get();
+
+      return res.json({
+        ok: true,
+        profile:
+          profileSnap.exists
+            ? profileSnap.data()
+            : null
+      });
+
+    } catch (error) {
+
+      console.error(
+        "GET PAYOUT PROFILE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Payout profile could not be loaded."
+      });
+    }
+  }
+);
+
+
+app.post(
+  "/masseuse-payout-profile",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const db = admin.firestore();
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where("uid", "==", req.user.uid)
+          .limit(1)
+          .get();
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error: "Masseuse account not found."
+        });
+      }
+
+      const masseuse =
+        masseuseSnapshot.docs[0].data();
+
+      if (
+        masseuse.employmentStatus !== "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+      const payoutMethod =
+        String(
+          req.body.payoutMethod || ""
+        ).trim();
+
+      const accountHolder =
+        String(
+          req.body.accountHolder || ""
+        ).trim();
+
+      const bankName =
+        String(
+          req.body.bankName || ""
+        ).trim();
+
+      const accountReference =
+        String(
+          req.body.accountReference || ""
+        ).trim();
+
+      if (
+        !payoutMethod ||
+        !accountHolder ||
+        !accountReference
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Required payout information is missing."
+        });
+      }
+
+      if (
+        payoutMethod.length > 50 ||
+        accountHolder.length > 120 ||
+        bankName.length > 120 ||
+        accountReference.length > 100
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Payout information is too long."
+        });
+      }
+
+      await db
+        .collection("masseusePayoutProfiles")
+        .doc(req.user.uid)
+        .set(
+          {
+            masseuseUid:
+              req.user.uid,
+
+            payoutMethod,
+            accountHolder,
+            bankName,
+            accountReference,
+
+            updatedAt:
+              admin.firestore.FieldValue
+                .serverTimestamp()
+          },
+          {
+            merge: true
+          }
+        );
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "SAVE PAYOUT PROFILE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Payout profile could not be saved."
+      });
+    }
+  }
+);
 // MASSEUSE TEST
+
 app.get("/test-masseuses", async (req, res) => {
   try {
     const snapshot = await admin.firestore()
