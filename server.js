@@ -835,7 +835,7 @@ app.post("/create-booking", requireFirebaseAuth, async (req, res) => {
       db.collection("bookings").doc();
 
     const chatKey =
-      crypto.randomUUID();
+  bookingRef.id;
 const slotLockId =
   `${poolId}_${date}_${time}`
     .replace(/[^A-Za-z0-9_-]/g, "_");
@@ -1294,8 +1294,7 @@ app.post(
               status: "assigned",
 
               chatKey:
-                booking.chatKey ||
-                bookingId,
+  bookingId,
 
               assignedAt:
                 admin.firestore.FieldValue
