@@ -259,6 +259,81 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     );
 
     console.log("Ödeme OK:", bookingId);
+    const customerEmail =
+  String(
+    session.customer_details?.email || ""
+  ).trim().toLowerCase();
+
+if (
+  customerEmail &&
+  booking.confirmationEmailSent !== true
+) {
+  try {
+  
+
+  const amountPaid =
+    ((Number(booking.price) || 0) / 100)
+      .toFixed(2);
+
+  const confirmationMail =
+    await resend.emails.send({
+
+      from:
+        process.env.BOOKING_FROM_EMAIL ||
+        process.env.CAREER_FROM_EMAIL ||
+        "Sivelio <onboarding@resend.dev>",
+
+      to: customerEmail,
+
+      subject:
+        "Sivelio Spa - Booking Confirmed",
+
+      text: [
+        `Hello ${String(booking.name || "Customer")},`,
+        "",
+        "Your Sivelio Spa booking and payment have been confirmed.",
+        "",
+        `Booking ID: ${bookingId}`,
+        `Service: ${String(booking.service || "-")}`,
+        `Date: ${String(booking.date || "-")}`,
+        `Time: ${String(booking.time || "-")}`,
+        `Amount Paid: PHP ${amountPaid}`,
+        "Payment Status: Confirmed",
+        "",
+        "Your masseuse will be assigned through the Sivelio system.",
+        "",
+        "Thank you for choosing Sivelio Spa."
+      ].join("\n")
+    });
+
+  if (confirmationMail.error) {
+
+    console.error(
+      "BOOKING CONFIRMATION EMAIL ERROR:",
+      confirmationMail.error
+    );
+
+  } else {
+
+    await ref.set(
+      {
+        confirmationEmailSent: true,
+        confirmationEmailSentAt:
+          admin.firestore.FieldValue
+            .serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+  }
+} catch (emailError) {
+  console.error(
+    "BOOKING CONFIRMATION EMAIL ERROR:",
+    emailError.message
+  );
+}
+}
     if (
   booking.poolId &&
   booking.status === "pending" &&
