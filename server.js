@@ -24,6 +24,11 @@ admin.initializeApp({
 });
 
 const app = express();
+const SERVICE_PRICES = {
+  Relaxation: 140000,
+  "Deep Tissue": 160000,
+  Aromatherapy: 150000
+};
 app.set("trust proxy", 1);
 
 function getRequestCountry(req) {
