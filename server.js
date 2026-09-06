@@ -3054,7 +3054,11 @@ app.post(
   "/therapist-set-pin",
   blockTurkeyTransactions,
   async (req, res) => {
-
+  return res.status(410).json({
+    ok: false,
+    error:
+      "PIN setup links are no longer used."
+  });
   try {
 
     const token =
@@ -3205,10 +3209,10 @@ app.post(
   async (req, res) => {
 
   const genericResponse = {
-    ok: true,
-    message:
-      "If an active Therapist account exists for this email, PIN reset instructions will be sent."
-  };
+  ok: true,
+  message:
+    "If an active Therapist account exists for this email, a new 6-digit PIN will be sent."
+};
 
 
   try {
@@ -3274,92 +3278,97 @@ app.post(
     }
 
 
-    const pinSetupToken =
-      crypto
-        .randomBytes(32)
-        .toString("hex");
+    const uid =
+  String(
+    masseuse.uid ||
+    masseuseDoc.id
+  );
 
 
-    const pinSetupTokenHash =
-      crypto
-        .createHash("sha256")
-        .update(pinSetupToken)
-        .digest("hex");
+// Generate a new random 6-digit PIN.
+const newPin =
+  crypto
+    .randomInt(0, 1000000)
+    .toString()
+    .padStart(6, "0");
 
 
-    const pinSetupExpiresAt =
-      Date.now() +
-      (30 * 60 * 1000);
+// Make the new PIN active immediately.
+await admin.auth().updateUser(
+  uid,
+  {
+    password: newPin
+  }
+);
 
 
-    await masseuseDoc.ref.set(
-      {
-        pinSetupTokenHash,
-        pinSetupExpiresAt
-      },
-      {
-        merge: true
-      }
-    );
+// Remove any old PIN setup tokens.
+await masseuseDoc.ref.update({
+
+  pinSetupTokenHash:
+    admin.firestore.FieldValue.delete(),
+
+  pinSetupExpiresAt:
+    admin.firestore.FieldValue.delete(),
+
+  pinConfigured: true,
+
+  pinUpdatedAt:
+    admin.firestore.FieldValue
+      .serverTimestamp()
+});
 
 
-    const pinSetupLink =
-      "https://sivelio.com/therapist-pin.html?token=" +
-      encodeURIComponent(
-        pinSetupToken
-      );
+// Email the new PIN.
+const resetMail =
+  await resend.emails.send({
+
+    from:
+      process.env.CAREER_FROM_EMAIL ||
+      "Sivelio <onboarding@resend.dev>",
+
+    to: email,
+
+    subject:
+      "Your New Sivelio Therapist PIN",
+
+    html: `
+      <h2>Sivelio Therapist PIN</h2>
+
+      <p>
+        A new 6-digit Therapist PIN
+        has been generated for your account.
+      </p>
+
+      <p style="font-size:28px;font-weight:bold;">
+        ${newPin}
+      </p>
+
+      <p>
+        Open Therapist Board in Sivelio
+        and sign in with your email
+        and this new PIN.
+      </p>
+
+      <p>
+        Keep this PIN private.
+      </p>
+
+      <p>
+        If you did not request this change,
+        please contact Sivelio.
+      </p>
+    `
+  });
 
 
-    const resetMail =
-      await resend.emails.send({
+if (resetMail.error) {
 
-        from:
-          process.env.CAREER_FROM_EMAIL ||
-          "Sivelio <onboarding@resend.dev>",
-
-        to: email,
-
-        subject:
-          "Reset Your Sivelio Therapist PIN",
-
-        html: `
-          <h2>Sivelio Therapist PIN Reset</h2>
-
-          <p>
-            A request was made to reset
-            your Sivelio Therapist PIN.
-          </p>
-
-          <p>
-            Use the secure link below
-            to create a new 6-digit PIN:
-          </p>
-
-          <p>
-            <a href="${pinSetupLink}">
-              Create New 6-Digit PIN
-            </a>
-          </p>
-
-          <p>
-            This link expires in 30 minutes.
-          </p>
-
-          <p>
-            If you did not request this,
-            you can ignore this email.
-          </p>
-        `
-      });
-
-
-    if (resetMail.error) {
-
-      console.error(
-        "THERAPIST PIN RESET EMAIL ERROR:",
-        resetMail.error
-      );
-    }
+  console.error(
+    "THERAPIST PIN RESET EMAIL ERROR:",
+    resetMail.error
+  );
+}
 
 
     return res.json(
@@ -3526,18 +3535,19 @@ if (position !== "Therapist") {
     }
 
 
-    // Random temporary password.
-    // Applicant never needs to know this password.
-    const temporaryPassword =
-      crypto.randomBytes(24).toString("hex") +
-      "Aa1!";
+    // Automatically generate a random 6-digit Therapist PIN.
+const therapistPin =
+  crypto
+    .randomInt(0, 1000000)
+    .toString()
+    .padStart(6, "0");
 
 
     // Create Firebase Authentication account.
     const userRecord =
       await admin.auth().createUser({
         email,
-        password: temporaryPassword,
+        password: therapistPin,
         displayName: `${firstName} ${lastName}`,
         disabled: false
       });
@@ -3600,35 +3610,7 @@ if (position !== "Therapist") {
       });
 
 
-    // Secure one-time token for creating a 6-digit Therapist PIN.
-const pinSetupToken =
-  crypto.randomBytes(32).toString("hex");
-
-const pinSetupTokenHash =
-  crypto
-    .createHash("sha256")
-    .update(pinSetupToken)
-    .digest("hex");
-
-const pinSetupExpiresAt =
-  Date.now() + (24 * 60 * 60 * 1000);
-
-await db
-  .collection("masseuses")
-  .doc(createdUid)
-  .set(
-    {
-      pinSetupTokenHash,
-      pinSetupExpiresAt
-    },
-    {
-      merge: true
-    }
-  );
-
-const pinSetupLink =
-  "https://sivelio.com/therapist-pin.html?token=" +
-  encodeURIComponent(pinSetupToken);
+    
 
 
     // Send the applicant their hiring/onboarding email.
@@ -3668,20 +3650,24 @@ const pinSetupLink =
           </p>
 
          <p>
-  Use the secure link below to create
-  your 6-digit Sivelio Therapist PIN:
+  Your automatically generated
+  6-digit Sivelio Therapist PIN is:
+</p>
+
+<p style="font-size:28px;font-weight:bold;">
+  ${therapistPin}
 </p>
 
 <p>
-  <a href="${pinSetupLink}">
-    Create My 6-Digit PIN
-  </a>
+  Open Therapist Board in Sivelio
+  and sign in with your email
+  and this 6-digit PIN.
 </p>
 
 <p>
-  After creating your PIN,
-  open Therapist Board in Sivelio
-  and sign in with your email and PIN.
+  Keep your PIN private.
+  If you forget it, use Forgot PIN
+  to receive a new PIN.
 </p>
 
           <p>
