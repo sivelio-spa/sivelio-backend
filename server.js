@@ -33,12 +33,20 @@ app.set("trust proxy", 1);
 
 function getRequestCountry(req) {
 
-  let ip =
+  const forwarded =
     String(
-      req.ip ||
+      req.headers["x-forwarded-for"] || ""
+    )
+      .split(",")[0]
+      .trim();
+
+  let ip =
+    forwarded ||
+    String(
       req.socket?.remoteAddress ||
+      req.ip ||
       ""
-    );
+    ).trim();
 
   if (ip.startsWith("::ffff:")) {
     ip = ip.substring(7);
