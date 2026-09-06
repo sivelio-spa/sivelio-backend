@@ -11,6 +11,7 @@ const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const geoip = require("geoip-lite");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -23,11 +24,177 @@ admin.initializeApp({
 });
 
 const app = express();
-const SERVICE_PRICES = {
-  Relaxation: 140000,
-  "Deep Tissue": 160000,
-  Aromatherapy: 150000
-};
+app.set("trust proxy", 1);
+
+function getRequestCountry(req) {
+
+  let ip =
+    String(
+      req.ip ||
+      req.socket?.remoteAddress ||
+      ""
+    );
+
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7);
+  }
+
+  const result =
+    geoip.lookup(ip);
+
+  return result?.country || null;
+}
+
+const TURKEY_ACCESS_EMAILS = new Set([
+  "kubilaycebeci37@gmail.com",
+  "orhancebeci71+sivelio@gmail.com"
+]);
+
+function createTurkeyAccessToken(email) {
+
+  const secret =
+    String(
+      process.env.TURKEY_ACCESS_SECRET || ""
+    );
+
+  if (!secret) {
+    throw new Error(
+      "TURKEY_ACCESS_SECRET_MISSING"
+    );
+  }
+
+  const payload =
+    Buffer.from(
+      JSON.stringify({
+        email:
+          String(email)
+            .trim()
+            .toLowerCase(),
+
+        expiresAt:
+          Date.now() +
+          180 * 24 * 60 * 60 * 1000
+      })
+    ).toString("base64url");
+
+  const signature =
+    crypto
+      .createHmac("sha256", secret)
+      .update(payload)
+      .digest("base64url");
+
+  return payload + "." + signature;
+}
+
+
+function verifyTurkeyAccessToken(token) {
+
+  try {
+
+    const secret =
+      String(
+        process.env.TURKEY_ACCESS_SECRET || ""
+      );
+
+    if (!secret || !token) {
+      return null;
+    }
+
+    const parts =
+      String(token).split(".");
+
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const payload =
+      parts[0];
+
+    const receivedSignature =
+      parts[1];
+
+    const expectedSignature =
+      crypto
+        .createHmac("sha256", secret)
+        .update(payload)
+        .digest("base64url");
+
+    if (
+      receivedSignature.length !==
+      expectedSignature.length
+    ) {
+      return null;
+    }
+
+    if (
+      !crypto.timingSafeEqual(
+        Buffer.from(receivedSignature),
+        Buffer.from(expectedSignature)
+      )
+    ) {
+      return null;
+    }
+
+    const data =
+      JSON.parse(
+        Buffer
+          .from(payload, "base64url")
+          .toString("utf8")
+      );
+
+    const email =
+      String(data.email || "")
+        .trim()
+        .toLowerCase();
+
+    if (
+      !TURKEY_ACCESS_EMAILS.has(email)
+    ) {
+      return null;
+    }
+
+    if (
+      Number(data.expiresAt || 0) <=
+      Date.now()
+    ) {
+      return null;
+    }
+
+    return data;
+
+  } catch (error) {
+
+    return null;
+  }
+}
+function blockTurkeyTransactions(
+  req,
+  res,
+  next
+) {
+
+  const country =
+    getRequestCountry(req);
+
+  if (country !== "TR") {
+    return next();
+  }
+
+  const access =
+    verifyTurkeyAccessToken(
+      req.headers["x-sivelio-access"]
+    );
+
+  if (access) {
+    return next();
+  }
+
+  return res.status(403).json({
+    ok: false,
+    error:
+      "Transactions are not available in Türkiye."
+  });
+}
 async function getActivePoolCapacity(poolId) {
 
   const snapshot =
@@ -205,9 +372,10 @@ app.use(cors({
   methods: ["GET", "POST", "OPTIONS"],
 
   allowedHeaders: [
-    "Content-Type",
-    "Authorization"
-  ]
+  "Content-Type",
+  "Authorization",
+  "X-Sivelio-Access"
+]
 }));
 
 
@@ -461,6 +629,552 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Stripe backend is running");
 });
+// ==============================
+// TURKEY SPECIAL ACCESS
+// ==============================
+
+app.post(
+  "/turkey-access-login",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const email =
+        String(
+          req.user.email || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        !TURKEY_ACCESS_EMAILS.has(email)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "Access not allowed."
+        });
+      }
+
+      const accessToken =
+        createTurkeyAccessToken(email);
+
+      return res.json({
+        ok: true,
+        accessToken
+      });
+
+    } catch (error) {
+
+      console.error(
+        "TURKEY ACCESS ERROR:",
+        error.message
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Special access could not be created."
+      });
+    }
+  }
+);
+app.get("/country-status", (req, res) => {
+
+  const country =
+    getRequestCountry(req);
+
+  const access =
+    verifyTurkeyAccessToken(
+      req.headers["x-sivelio-access"]
+    );
+
+  return res.json({
+    ok: true,
+    country: country || null,
+    readOnly:
+      country === "TR" &&
+      !access
+  });
+});
+// ==============================
+// MASSEUSE FCM TOKEN
+// ==============================
+
+app.post(
+  "/masseuse-fcm-token",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const fcmToken =
+        String(
+          req.body.fcmToken || ""
+        ).trim();
+
+      if (
+        !fcmToken ||
+        fcmToken.length > 4096
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid notification token."
+        });
+      }
+
+      const db =
+        admin.firestore();
+
+      const snapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+      if (snapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Masseuse account not found."
+        });
+      }
+
+      const masseuse =
+        snapshot.docs[0].data();
+
+      if (
+        masseuse.employmentStatus !==
+        "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+      await snapshot.docs[0].ref.update({
+        fcmToken
+      });
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "FCM TOKEN SAVE ERROR:",
+        error.message
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Notification token could not be saved."
+      });
+    }
+  }
+);
+
+
+// ==============================
+// MASSEUSE ONLINE / OFFLINE
+// ==============================
+
+app.post(
+  "/masseuse-availability",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const availability =
+        String(
+          req.body.availability || ""
+        ).trim();
+
+      if (
+        availability !== "online" &&
+        availability !== "offline"
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid availability."
+        });
+      }
+
+      const db =
+        admin.firestore();
+
+      const snapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+      if (snapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Masseuse account not found."
+        });
+      }
+
+      const masseuseDoc =
+        snapshot.docs[0];
+
+      const masseuse =
+        masseuseDoc.data();
+
+      if (
+        masseuse.employmentStatus !==
+        "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+      if (availability === "online") {
+
+        const bookingsSnapshot =
+          await db
+            .collection("bookings")
+            .where(
+              "assignedMasseuseUid",
+              "==",
+              req.user.uid
+            )
+            .get();
+
+        const hasActiveBooking =
+          bookingsSnapshot.docs.some(
+            docSnap => {
+
+              const booking =
+                docSnap.data();
+
+              return [
+                "assigned",
+                "en_route",
+                "arrived",
+                "service_started"
+              ].includes(
+                booking.status
+              );
+            }
+          );
+
+        if (hasActiveBooking) {
+          return res.status(409).json({
+            ok: false,
+            error: "ACTIVE_BOOKING_EXISTS"
+          });
+        }
+      }
+
+      await masseuseDoc.ref.update({
+        availability
+      });
+
+      return res.json({
+        ok: true,
+        availability
+      });
+
+    } catch (error) {
+
+      console.error(
+        "AVAILABILITY UPDATE ERROR:",
+        error.message
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Availability could not be updated."
+      });
+    }
+  }
+);
+// ==============================
+// MASSEUSE CHAT MESSAGE
+// ==============================
+
+app.post(
+  "/masseuse-chat-message",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(
+          req.body.bookingId || ""
+        ).trim();
+
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
+
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+
+      if (
+        !text ||
+        text.length > 500
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid message."
+        });
+      }
+
+
+      const db =
+        admin.firestore();
+
+      const bookingRef =
+        db
+          .collection("bookings")
+          .doc(bookingId);
+
+      const bookingSnap =
+        await bookingRef.get();
+
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "Booking not found."
+        });
+      }
+
+
+      const booking =
+        bookingSnap.data();
+
+
+      if (
+        booking.assignedMasseuseUid !==
+        req.user.uid
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+
+      if (
+        ![
+          "assigned",
+          "en_route",
+          "arrived",
+          "service_started"
+        ].includes(booking.status)
+      ) {
+        return res.status(409).json({
+          ok: false,
+          error: "CHAT_NOT_AVAILABLE"
+        });
+      }
+
+
+      const chatKey =
+        String(
+          booking.chatKey || bookingId
+        ).trim();
+
+
+      await db
+        .collection("bookingChats")
+        .doc(chatKey)
+        .collection("messages")
+        .add({
+          bookingId,
+          senderType: "masseuse",
+          senderUid: req.user.uid,
+          text,
+
+          createdAt:
+            admin.firestore.FieldValue
+              .serverTimestamp(),
+
+          clientCreatedAt:
+            Date.now()
+        });
+
+
+      return res.json({
+        ok: true
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "MASSEUSE CHAT MESSAGE ERROR:",
+        error.message
+      );
+
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Message could not be sent."
+      });
+    }
+  }
+);
+// ==============================
+// CUSTOMER CHAT MESSAGE
+// ==============================
+
+app.post(
+  "/customer-chat-message",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(
+          req.body.bookingId || ""
+        ).trim();
+
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+      if (
+        !text ||
+        text.length > 500
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid message."
+        });
+      }
+
+      const db =
+        admin.firestore();
+
+      const bookingRef =
+        db
+          .collection("bookings")
+          .doc(bookingId);
+
+      const bookingSnap =
+        await bookingRef.get();
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "Booking not found."
+        });
+      }
+
+      const booking =
+        bookingSnap.data();
+
+      if (
+        booking.customerUid !==
+        req.user.uid
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+      if (
+        ![
+          "assigned",
+          "en_route",
+          "arrived",
+          "service_started"
+        ].includes(booking.status)
+      ) {
+        return res.status(409).json({
+          ok: false,
+          error: "CHAT_NOT_AVAILABLE"
+        });
+      }
+
+      const chatKey =
+        String(
+          booking.chatKey || bookingId
+        ).trim();
+
+      await db
+        .collection("bookingChats")
+        .doc(chatKey)
+        .collection("messages")
+        .add({
+          bookingId,
+          senderType: "customer",
+          senderUid: req.user.uid,
+          text,
+
+          createdAt:
+            admin.firestore.FieldValue
+              .serverTimestamp(),
+
+          clientCreatedAt:
+            Date.now()
+        });
+
+      return res.json({
+        ok: true
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CUSTOMER CHAT MESSAGE ERROR:",
+        error.message
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Message could not be sent."
+      });
+    }
+  }
+);
 app.get("/pool-capacity", async (req, res) => {
   try {
     const poolId = String(req.query.poolId || "").trim();
@@ -624,6 +1338,7 @@ app.get(
 
 app.post(
   "/masseuse-schedule",
+  blockTurkeyTransactions,
   requireFirebaseAuth,
   async (req, res) => {
 
@@ -899,7 +1614,11 @@ masseuseSnapshot.forEach(
     });
   }
 });
-app.post("/create-booking", requireFirebaseAuth, async (req, res) => {
+app.post(
+  "/create-booking",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
 
   const db = admin.firestore();
 
@@ -1162,7 +1881,11 @@ transaction.set(
     });
   }
 });
-app.post("/create-checkout-session", requireFirebaseAuth, async (req, res) => {
+app.post(
+  "/create-checkout-session",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
   try {
     const { bookingId } = req.body;
 
@@ -1256,6 +1979,7 @@ if (
 });
 app.post(
   "/accept-booking",
+  blockTurkeyTransactions,
   requireFirebaseAuth,
   async (req, res) => {
 
@@ -1468,6 +2192,7 @@ app.post(
 );
 app.post(
   "/reject-booking",
+  blockTurkeyTransactions,
   requireFirebaseAuth,
   async (req, res) => {
 
@@ -1563,6 +2288,409 @@ app.post(
     }
   }
 );
+// ==============================
+// ADVANCE BOOKING STATUS
+// ==============================
+
+app.post(
+  "/advance-booking",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(
+          req.body.bookingId || ""
+        ).trim();
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+
+      const db =
+        admin.firestore();
+
+      const bookingRef =
+        db
+          .collection("bookings")
+          .doc(bookingId);
+
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error: "Masseuse account not found."
+        });
+      }
+
+
+      const masseuse =
+        masseuseSnapshot.docs[0].data();
+
+
+      if (
+        masseuse.employmentStatus !==
+        "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+
+      let resultingStatus = null;
+
+
+      await db.runTransaction(
+        async transaction => {
+
+          const bookingSnap =
+            await transaction.get(
+              bookingRef
+            );
+
+
+          if (!bookingSnap.exists) {
+            throw new Error(
+              "BOOKING_NOT_FOUND"
+            );
+          }
+
+
+          const booking =
+            bookingSnap.data();
+
+
+          if (
+            booking.assignedMasseuseUid !==
+            req.user.uid
+          ) {
+            throw new Error(
+              "NOT_AUTHORIZED"
+            );
+          }
+
+
+          let nextStatus = null;
+          let timestampField = null;
+
+
+          if (
+            booking.status === "assigned"
+          ) {
+
+            nextStatus = "en_route";
+            timestampField = "enRouteAt";
+
+          } else if (
+            booking.status === "en_route"
+          ) {
+
+            nextStatus = "arrived";
+            timestampField = "arrivedAt";
+
+          } else if (
+            booking.status === "arrived"
+          ) {
+
+            nextStatus =
+              "service_started";
+
+            timestampField =
+              "serviceStartedAt";
+
+          } else if (
+            booking.status ===
+            "service_started"
+          ) {
+
+            nextStatus = "completed";
+            timestampField = "completedAt";
+
+          } else {
+
+            throw new Error(
+              "INVALID_BOOKING_STATUS"
+            );
+          }
+
+
+          resultingStatus =
+            nextStatus;
+
+
+          transaction.update(
+            bookingRef,
+            {
+              status: nextStatus,
+
+              [timestampField]:
+                admin.firestore.FieldValue
+                  .serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      return res.json({
+        ok: true,
+        status: resultingStatus
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "ADVANCE BOOKING ERROR:",
+        error.message
+      );
+
+
+      const knownErrors = [
+        "BOOKING_NOT_FOUND",
+        "NOT_AUTHORIZED",
+        "INVALID_BOOKING_STATUS"
+      ];
+
+
+      if (
+        knownErrors.includes(
+          error.message
+        )
+      ) {
+
+        return res.status(409).json({
+          ok: false,
+          error: error.message
+        });
+      }
+
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Booking status could not be updated."
+      });
+    }
+  }
+);
+// ==============================
+// MASSEUSE LIVE LOCATION
+// ==============================
+
+app.post(
+  "/masseuse-live-location",
+  blockTurkeyTransactions,
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const bookingId =
+        String(
+          req.body.bookingId || ""
+        ).trim();
+
+      const action =
+        String(
+          req.body.action || "update"
+        ).trim();
+
+
+      if (!bookingId) {
+        return res.status(400).json({
+          ok: false,
+          error: "bookingId is required."
+        });
+      }
+
+
+      if (
+        action !== "update" &&
+        action !== "clear"
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid location action."
+        });
+      }
+
+
+      const db =
+        admin.firestore();
+
+      const bookingRef =
+        db
+          .collection("bookings")
+          .doc(bookingId);
+
+      const bookingSnap =
+        await bookingRef.get();
+
+
+      if (!bookingSnap.exists) {
+        return res.status(404).json({
+          ok: false,
+          error: "Booking not found."
+        });
+      }
+
+
+      const booking =
+        bookingSnap.data();
+
+
+      if (
+        booking.assignedMasseuseUid !==
+        req.user.uid
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_AUTHORIZED"
+        });
+      }
+
+
+      const masseuseSnapshot =
+        await db
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+
+      if (masseuseSnapshot.empty) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Masseuse account not found."
+        });
+      }
+
+
+      const masseuse =
+        masseuseSnapshot.docs[0].data();
+
+
+      if (
+        masseuse.employmentStatus !==
+        "active"
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error: "ACCOUNT_NOT_ACTIVE"
+        });
+      }
+
+
+      if (action === "clear") {
+
+        await bookingRef.update({
+          liveLocation: null
+        });
+
+        return res.json({
+          ok: true,
+          cleared: true
+        });
+      }
+
+
+      if (booking.status !== "en_route") {
+        return res.status(409).json({
+          ok: false,
+          error: "LOCATION_NOT_AVAILABLE"
+        });
+      }
+
+
+      const lat =
+        Number(req.body.lat);
+
+      const lng =
+        Number(req.body.lng);
+
+      const accuracy =
+        Number(req.body.accuracy);
+
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid location."
+        });
+      }
+
+
+      await bookingRef.update({
+        liveLocation: {
+          lat,
+          lng,
+
+          accuracy:
+            Number.isFinite(accuracy) &&
+            accuracy >= 0
+              ? accuracy
+              : null,
+
+          updatedAt:
+            Date.now()
+        }
+      });
+
+
+      return res.json({
+        ok: true
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "LIVE LOCATION ERROR:",
+        error.message
+      );
+
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          "Live location could not be updated."
+      });
+    }
+  }
+);
 app.get(
   "/private-session-note",
   requireFirebaseAuth,
@@ -1640,6 +2768,7 @@ app.get(
 
 app.post(
   "/private-session-note",
+  blockTurkeyTransactions,
   requireFirebaseAuth,
   async (req, res) => {
 
@@ -1784,6 +2913,7 @@ app.get(
 
 app.post(
   "/masseuse-payout-profile",
+  blockTurkeyTransactions,
   requireFirebaseAuth,
   async (req, res) => {
 
@@ -1903,7 +3033,340 @@ app.post(
     }
   }
 );
+// ==============================
+// THERAPIST 6-DIGIT PIN
+// ==============================
 
+app.post(
+  "/therapist-set-pin",
+  blockTurkeyTransactions,
+  async (req, res) => {
+
+  try {
+
+    const token =
+      String(req.body.token || "").trim();
+
+    const pin =
+      String(req.body.pin || "").trim();
+
+
+    if (!token) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid or expired PIN setup link."
+      });
+    }
+
+
+    if (!/^\d{6}$/.test(pin)) {
+      return res.status(400).json({
+        ok: false,
+        error: "PIN must contain exactly 6 digits."
+      });
+    }
+
+
+    const tokenHash =
+      crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+
+    const db =
+      admin.firestore();
+
+
+    const snapshot =
+      await db
+        .collection("masseuses")
+        .where(
+          "pinSetupTokenHash",
+          "==",
+          tokenHash
+        )
+        .limit(1)
+        .get();
+
+
+    if (snapshot.empty) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid or expired PIN setup link."
+      });
+    }
+
+
+    const masseuseDoc =
+      snapshot.docs[0];
+
+    const masseuse =
+      masseuseDoc.data();
+
+
+    if (
+      Number(
+        masseuse.pinSetupExpiresAt || 0
+      ) < Date.now()
+    ) {
+
+      return res.status(400).json({
+        ok: false,
+        error: "This PIN setup link has expired."
+      });
+    }
+
+
+    if (
+      masseuse.employmentStatus !==
+      "active"
+    ) {
+
+      return res.status(403).json({
+        ok: false,
+        error: "Therapist account is not active."
+      });
+    }
+
+
+    const uid =
+      String(
+        masseuse.uid ||
+        masseuseDoc.id
+      );
+
+
+    await admin.auth().updateUser(
+      uid,
+      {
+        password: pin
+      }
+    );
+
+
+    await masseuseDoc.ref.update({
+
+      pinSetupTokenHash:
+        admin.firestore.FieldValue.delete(),
+
+      pinSetupExpiresAt:
+        admin.firestore.FieldValue.delete(),
+
+      pinConfigured: true,
+
+      pinUpdatedAt:
+        admin.firestore.FieldValue
+          .serverTimestamp()
+    });
+
+
+    return res.json({
+      ok: true
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "THERAPIST SET PIN ERROR:",
+      error.message
+    );
+
+
+    return res.status(500).json({
+      ok: false,
+      error: "PIN could not be created."
+    });
+  }
+});
+
+
+// ==============================
+// THERAPIST FORGOT PIN
+// ==============================
+
+app.post(
+  "/therapist-forgot-pin",
+  blockTurkeyTransactions,
+  async (req, res) => {
+
+  const genericResponse = {
+    ok: true,
+    message:
+      "If an active Therapist account exists for this email, PIN reset instructions will be sent."
+  };
+
+
+  try {
+
+    const email =
+      String(
+        req.body.email || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        .test(email)
+    ) {
+
+      return res.json(
+        genericResponse
+      );
+    }
+
+
+    const db =
+      admin.firestore();
+
+
+    const snapshot =
+      await db
+        .collection("masseuses")
+        .where(
+          "email",
+          "==",
+          email
+        )
+        .limit(1)
+        .get();
+
+
+    if (snapshot.empty) {
+
+      return res.json(
+        genericResponse
+      );
+    }
+
+
+    const masseuseDoc =
+      snapshot.docs[0];
+
+    const masseuse =
+      masseuseDoc.data();
+
+
+    if (
+      masseuse.employmentStatus !==
+      "active"
+    ) {
+
+      return res.json(
+        genericResponse
+      );
+    }
+
+
+    const pinSetupToken =
+      crypto
+        .randomBytes(32)
+        .toString("hex");
+
+
+    const pinSetupTokenHash =
+      crypto
+        .createHash("sha256")
+        .update(pinSetupToken)
+        .digest("hex");
+
+
+    const pinSetupExpiresAt =
+      Date.now() +
+      (30 * 60 * 1000);
+
+
+    await masseuseDoc.ref.set(
+      {
+        pinSetupTokenHash,
+        pinSetupExpiresAt
+      },
+      {
+        merge: true
+      }
+    );
+
+
+    const pinSetupLink =
+      "https://sivelio.com/therapist-pin.html?token=" +
+      encodeURIComponent(
+        pinSetupToken
+      );
+
+
+    const resetMail =
+      await resend.emails.send({
+
+        from:
+          process.env.CAREER_FROM_EMAIL ||
+          "Sivelio <onboarding@resend.dev>",
+
+        to: email,
+
+        subject:
+          "Reset Your Sivelio Therapist PIN",
+
+        html: `
+          <h2>Sivelio Therapist PIN Reset</h2>
+
+          <p>
+            A request was made to reset
+            your Sivelio Therapist PIN.
+          </p>
+
+          <p>
+            Use the secure link below
+            to create a new 6-digit PIN:
+          </p>
+
+          <p>
+            <a href="${pinSetupLink}">
+              Create New 6-Digit PIN
+            </a>
+          </p>
+
+          <p>
+            This link expires in 30 minutes.
+          </p>
+
+          <p>
+            If you did not request this,
+            you can ignore this email.
+          </p>
+        `
+      });
+
+
+    if (resetMail.error) {
+
+      console.error(
+        "THERAPIST PIN RESET EMAIL ERROR:",
+        resetMail.error
+      );
+    }
+
+
+    return res.json(
+      genericResponse
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "THERAPIST FORGOT PIN ERROR:",
+      error.message
+    );
+
+
+    return res.json(
+      genericResponse
+    );
+  }
+});
 async function findBestPool(db) {
   const snap = await db.collection("masseuses").get();
 
@@ -1934,7 +3397,10 @@ async function findBestPool(db) {
 }
 
 
-app.post("/career-apply", async (req, res) => {
+app.post(
+  "/career-apply",
+  blockTurkeyTransactions,
+  async (req, res) => {
 
   console.log("🔥 CAREER ENDPOINT HIT");
 
@@ -2121,14 +3587,35 @@ if (position !== "Therapist") {
       });
 
 
-    // Secure password setup link.
-    const passwordSetupLink =
-      await admin.auth().generatePasswordResetLink(
-        email,
-        {
-          url: "https://sivelio.com/login.html"
-        }
-      );
+    // Secure one-time token for creating a 6-digit Therapist PIN.
+const pinSetupToken =
+  crypto.randomBytes(32).toString("hex");
+
+const pinSetupTokenHash =
+  crypto
+    .createHash("sha256")
+    .update(pinSetupToken)
+    .digest("hex");
+
+const pinSetupExpiresAt =
+  Date.now() + (24 * 60 * 60 * 1000);
+
+await db
+  .collection("masseuses")
+  .doc(createdUid)
+  .set(
+    {
+      pinSetupTokenHash,
+      pinSetupExpiresAt
+    },
+    {
+      merge: true
+    }
+  );
+
+const pinSetupLink =
+  "https://sivelio.com/therapist-pin.html?token=" +
+  encodeURIComponent(pinSetupToken);
 
 
     // Send the applicant their hiring/onboarding email.
@@ -2167,21 +3654,22 @@ if (position !== "Therapist") {
             until you sign in and choose Online.
           </p>
 
-          <p>
-            Use the secure link below to create
-            your password:
-          </p>
+         <p>
+  Use the secure link below to create
+  your 6-digit Sivelio Therapist PIN:
+</p>
 
-          <p>
-            <a href="${passwordSetupLink}">
-              Create My Sivelio Password
-            </a>
-          </p>
+<p>
+  <a href="${pinSetupLink}">
+    Create My 6-Digit PIN
+  </a>
+</p>
 
-          <p>
-            After creating your password,
-            sign in to the Sivelio therapist panel.
-          </p>
+<p>
+  After creating your PIN,
+  open Therapist Board in Sivelio
+  and sign in with your email and PIN.
+</p>
 
           <p>
             Welcome to the Sivelio team.
