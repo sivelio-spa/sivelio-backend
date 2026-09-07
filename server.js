@@ -603,18 +603,26 @@ eligibleUids,
       if (tokens.length > 0) {
 
         const response = await admin.messaging().sendEachForMulticast({
-          tokens: tokens,
+  tokens: tokens,
 
-          notification: {
-            title: "Yeni Sivelio Randevusu",
-            body: `${booking.poolId} için yeni ücretli randevu. Paneli açın.`
-          },
+  notification: {
+    title: "Yeni Sivelio Randevusu",
+    body: `${booking.poolId} için yeni ücretli randevu. Paneli açın.`
+  },
 
-          data: {
-            bookingId: bookingId,
-            poolId: String(booking.poolId)
-          }
-        });
+  data: {
+    bookingId: bookingId,
+    poolId: String(booking.poolId)
+  },
+
+  webpush: {
+    fcmOptions: {
+      link:
+        "https://sivelio.com/masoz.html?bookingId=" +
+        encodeURIComponent(bookingId)
+    }
+  }
+});
 
         console.log(
           "Bildirim gönderildi:",
