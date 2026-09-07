@@ -703,13 +703,73 @@ app.get("/country-status", (req, res) => {
     );
 
   return res.json({
-    ok: true,
-    country: country || null,
-    readOnly:
-      country === "TR" &&
-      !access
-  });
+  ok: true,
+  country: country || null,
+
+  trustedAccess:
+    Boolean(access),
+
+  readOnly:
+    country === "TR" &&
+    !access
 });
+});
+// ==============================
+// THERAPIST ACCESS STATUS
+// ==============================
+
+app.get(
+  "/therapist-access-status",
+  requireFirebaseAuth,
+  async (req, res) => {
+
+    try {
+
+      const snapshot =
+        await admin.firestore()
+          .collection("masseuses")
+          .where(
+            "uid",
+            "==",
+            req.user.uid
+          )
+          .limit(1)
+          .get();
+
+      if (snapshot.empty) {
+
+        return res.json({
+          ok: true,
+          allowed: false
+        });
+      }
+
+      const masseuse =
+        snapshot.docs[0].data();
+
+      return res.json({
+        ok: true,
+        allowed:
+          masseuse.employmentStatus ===
+          "active"
+      });
+
+    } catch (error) {
+
+      console.error(
+        "THERAPIST ACCESS STATUS ERROR:",
+        error.message
+      );
+
+      return res.status(500).json({
+        ok: false,
+        allowed: false,
+        error:
+          "Therapist access could not be checked."
+      });
+    }
+  }
+);
 // ==============================
 // MASSEUSE FCM TOKEN
 // ==============================
