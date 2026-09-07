@@ -3719,9 +3719,14 @@ const therapistPin =
 </p>
 
 <p>
-  Open Therapist Board in Sivelio
-  and sign in with your email
-  and this 6-digit PIN.
+  Open Therapist Board and sign in
+  with your email and this 6-digit PIN.
+</p>
+
+<p>
+  <a href="https://sivelio.com/login.html">
+    Open Therapist Board
+  </a>
 </p>
 
 <p>
