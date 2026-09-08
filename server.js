@@ -574,7 +574,12 @@ eligibleUids,
     );
 }
 
-    if (booking.poolId) {
+    if (
+  booking.poolId &&
+  booking.status === "pending" &&
+  !booking.assignedMasseuseUid &&
+  booking.therapistNotificationSent !== true
+) {
 
       const masseusesSnap = await db
   .collection("masseuses")
@@ -623,7 +628,18 @@ eligibleUids,
     }
   }
 });
-
+if (response.successCount > 0) {
+  await ref.set(
+    {
+      therapistNotificationSent: true,
+      therapistNotificationSentAt:
+        admin.firestore.FieldValue.serverTimestamp()
+    },
+    {
+      merge: true
+    }
+  );
+}
         console.log(
           "Bildirim gönderildi:",
           response.successCount,
@@ -3345,7 +3361,64 @@ app.post(
       );
     }
 
+const nowMs = Date.now();
+const pinResetCooldownMs =
+  10 * 60 * 1000; // 10 minutes
 
+const resetAllowed =
+  await db.runTransaction(
+    async transaction => {
+
+      const freshDoc =
+        await transaction.get(
+          masseuseDoc.ref
+        );
+
+      if (!freshDoc.exists) {
+        return false;
+      }
+
+      const freshMasseuse =
+        freshDoc.data() || {};
+
+      if (
+        freshMasseuse.employmentStatus !==
+        "active"
+      ) {
+        return false;
+      }
+
+      const lastResetMs =
+        Number(
+          freshMasseuse
+            .pinResetRequestedAtMs || 0
+        );
+
+      if (
+        lastResetMs > 0 &&
+        nowMs - lastResetMs <
+          pinResetCooldownMs
+      ) {
+        return false;
+      }
+
+      transaction.update(
+        masseuseDoc.ref,
+        {
+          pinResetRequestedAtMs:
+            nowMs
+        }
+      );
+
+      return true;
+    }
+  );
+
+if (!resetAllowed) {
+  return res.json(
+    genericResponse
+  );
+}
     const uid =
   String(
     masseuse.uid ||
